@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>AutoTax OCR</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <h1>AutoTax OCR</h1>
+
+    <!-- OCR Upload Bölümü -->
+    <div class="upload-panel">
+        <input type="file" id="fileInput">
+        <button id="uploadBtn">Gönder</button>
+    </div>
+
+    <pre id="result"></pre>
+
+    <!-- Filtreleme Paneli -->
+    <div class="filter-panel">
+        <h2>Filtreleme</h2>
+
+        <label>Tarih Başlangıç:</label>
+        <input type="date" id="dateFrom">
+
+        <label>Tarih Bitiş:</label>
+        <input type="date" id="dateTo">
+
+        <label>Firma:</label>
+        <select id="vendorSelect">
+            <option value="ALL">Tümü</option>
+        </select>
+
+        <label>Minimum Tutar:</label>
+        <input type="number" id="minAmount" placeholder="0">
+
+        <label>Maksimum Tutar:</label>
+        <input type="number" id="maxAmount" placeholder="10000">
+
+        <button id="applyFilters">Filtrele</button>
+    </div>
+
+    <!-- Fatura Tablosu -->
+<table id="invoiceTable">
+    <thead>
+        <tr>
+            <th>Firma</th>
+            <th>Tarih</th>
+            <th>Tutar</th>
+            <th>Dosya</th>
+        </tr>
+    </thead>
+    <tbody></tbody>
+</table>
+
+<!-- Toplam Kutusu -->
+<div id="totalBox" style="margin-top: 20px; font-size: 18px; font-weight: bold;">
+    Toplam: 0 €
+</div>
+
+<!-- Firma Bazlı Toplamlar -->
+<div id="vendorTotals" style="margin-top: 15px; font-size: 16px;"></div>
+
+<!-- Aylık Harcama Grafiği -->
+<canvas id="monthlyChart" style="margin-top: 30px; max-width: 600px;"></canvas>
+
+<!-- Chart.js (ÖNCE yüklenir) -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<!-- script.js (EN SON yüklenir) -->
+<script type="module" src="script.js"></script>
+
+</body>
+</html>

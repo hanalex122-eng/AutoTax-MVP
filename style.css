@@ -1,0 +1,39 @@
+body {
+    font-family: Arial, sans-serif;
+    max-width: 600px;
+    margin: 40px auto;
+    padding: 20px;
+    background: #f7f7f7;
+}
+
+h1 {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+input[type="file"] {
+    display: block;
+    margin-bottom: 15px;
+}
+
+button {
+    padding: 10px 20px;
+    background: #0078ff;
+    color: white;
+    border: none;
+    cursor: pointer;
+    border-radius: 6px;
+}
+
+button:hover {
+    background: #005fcc;
+}
+
+pre {
+    background: #222;
+    color: #0f0;
+    padding: 15px;
+    border-radius: 6px;
+    margin-top: 20px;
+    white-space: pre-wrap;
+}
