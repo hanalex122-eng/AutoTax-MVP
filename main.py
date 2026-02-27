@@ -11,6 +11,9 @@ from app.routes.stats import router as stats_router
 from app.routes.auth  import router as auth_router, get_current_user
 from app.routes.stripe_payments import router as stripe_router
 from app.routes.admin import router as admin_router
+from app.routes.share  import router as share_router
+from app.routes.budget import router as budget_router
+from app.routes.tax    import router as tax_router
 
 ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:8000").split(",")
 
@@ -77,6 +80,12 @@ app.include_router(stats_router, prefix="/api", dependencies=[Depends(get_curren
 
 # Admin route — JWT + is_admin kontrolü
 app.include_router(admin_router, prefix="/api")
+# Muhasebeci paylaşım (token bazlı, JWT gerekmez)
+app.include_router(share_router,  prefix="/api")
+# Bütçe takibi
+app.include_router(budget_router, prefix="/api", dependencies=[Depends(get_current_user)])
+# Vergi / KDV raporu
+app.include_router(tax_router,    prefix="/api", dependencies=[Depends(get_current_user)])
 
 
 @app.get("/api/health")

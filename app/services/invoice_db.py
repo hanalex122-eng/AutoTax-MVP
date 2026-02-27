@@ -212,6 +212,34 @@ def find_duplicate(vendor: str, date: str, total: float,
     return None
 
 
+def find_recurring(vendor: str, months: int = 3) -> list[dict]:
+    """
+    Aynı firmadan son N ayda düzenli fatura var mı kontrol et.
+    Her ay en az 1 fatura bulunursa 'tekrarlayan' sayar.
+    """
+    if not vendor:
+        return []
+    with _conn() as c:
+        rows = c.execute(
+            """
+            SELECT strftime('%Y-%m', date) as month,
+                   COUNT(*) as cnt,
+                   AVG(total) as avg_total,
+                   MIN(total) as min_total,
+                   MAX(total) as max_total
+            FROM invoices
+            WHERE LOWER(vendor)=LOWER(?)
+              AND date >= date('now', ?)
+            GROUP BY month
+            ORDER BY month DESC
+            """,
+            (vendor, f"-{months} months")
+        ).fetchall()
+    result = [dict(r) for r in rows]
+    # Kaç ay ardışık gelmiş?
+    return result
+
+
 def update_invoice(inv_id: str, fields: dict) -> bool:
     allowed = {"vendor", "date", "time", "total", "vat_rate", "vat_amount",
                "invoice_number", "category", "payment_method", "needs_review", "review_reason"}

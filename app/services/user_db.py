@@ -67,6 +67,17 @@ CREATE TABLE IF NOT EXISTS users (
 CREATE INDEX IF NOT EXISTS idx_user_email  ON users(email);
 CREATE INDEX IF NOT EXISTS idx_family      ON users(family_id);
 
+CREATE TABLE IF NOT EXISTS accountant_shares (
+    token      TEXT PRIMARY KEY,
+    user_id    TEXT NOT NULL,
+    label      TEXT,
+    created_at TEXT NOT NULL,
+    expires_at TEXT,
+    is_active  INTEGER NOT NULL DEFAULT 1
+);
+CREATE INDEX IF NOT EXISTS idx_share_user ON accountant_shares(user_id);
+
+
 CREATE TABLE IF NOT EXISTS family_invites (
     id          TEXT PRIMARY KEY,
     family_id   TEXT NOT NULL,
@@ -312,6 +323,52 @@ def remove_family_member(family_id: str, member_id: str) -> bool:
                 "UPDATE users SET family_id=NULL, role='owner', plan='free' "
                 "WHERE id=? AND family_id=? AND role='member'",
                 (member_id, family_id)
+            )
+    return True
+
+
+# ── Muhasebeci paylaşım linkleri ─────────────────────────
+def create_share_token(user_id: str, label: str = "", days: int = 90) -> dict:
+    token      = str(uuid.uuid4()).replace("-", "")
+    now        = datetime.utcnow().isoformat()
+    expires_at = (datetime.utcnow() + timedelta(days=days)).isoformat()
+    with _LOCK:
+        with _conn() as c:
+            c.execute(
+                "INSERT INTO accountant_shares (token,user_id,label,created_at,expires_at,is_active) "
+                "VALUES (?,?,?,?,?,1)",
+                (token, user_id, label, now, expires_at)
+            )
+    return {"token": token, "expires_at": expires_at, "label": label}
+
+
+def get_share_token(token: str) -> dict | None:
+    with _conn() as c:
+        row = c.execute(
+            "SELECT * FROM accountant_shares "
+            "WHERE token=? AND is_active=1 "
+            "AND (expires_at IS NULL OR expires_at > datetime('now'))",
+            (token,)
+        ).fetchone()
+    return dict(row) if row else None
+
+
+def list_share_tokens(user_id: str) -> list[dict]:
+    with _conn() as c:
+        rows = c.execute(
+            "SELECT token,label,created_at,expires_at,is_active FROM accountant_shares "
+            "WHERE user_id=? ORDER BY created_at DESC",
+            (user_id,)
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def revoke_share_token(token: str, user_id: str) -> bool:
+    with _LOCK:
+        with _conn() as c:
+            c.execute(
+                "UPDATE accountant_shares SET is_active=0 WHERE token=? AND user_id=?",
+                (token, user_id)
             )
     return True
 

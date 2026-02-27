@@ -9,7 +9,8 @@ from app.services.image_processor import to_raw_png, prepare_for_ocr
 from app.services.ocr_engine import run_ocr
 from app.services.invoice_parser import parse_invoice
 from app.services.invoice_db import (
-    add_invoice, update_invoice, get_review_queue, get_invoice, find_duplicate
+    add_invoice, update_invoice, get_review_queue, get_invoice,
+    find_duplicate, find_recurring
 )
 from app.services.qr_reader import read_qr, parse_qr
 from app.models.invoice import InvoiceResult
@@ -164,22 +165,22 @@ async def upload(request: Request, file: UploadFile = File(...)):
                         used2, limit2, u.get("plan","free")
                     )
 
-    # Duplikasyon kontrolü
+    # Duplikasyon + tekrarlayan fatura kontrolü
     dup = find_duplicate(
         vendor         = result.vendor,
         date           = result.date,
         total          = result.total,
         invoice_number = result.invoice_number,
     )
+    result_dict = result.model_dump()
+
     if dup:
-        result_dict = result.model_dump()
         result_dict["duplicate_warning"] = {
             "existing_id":        dup["id"],
             "existing_date":      dup.get("date"),
             "existing_timestamp": dup.get("timestamp"),
             "existing_total":     dup.get("total"),
         }
-        # Kullanıcıya e-posta ile de bildir
         if user:
             from app.services.email_service import send_duplicate_warning
             from app.services.user_db import get_user_by_id
@@ -192,8 +193,20 @@ async def upload(request: Request, file: UploadFile = File(...)):
                     result.total  or 0,
                     (dup.get("timestamp") or "")[:10],
                 )
-        return result_dict
-    return result
+
+    # Tekrarlayan fatura analizi (3 ay ardışık gelmişse bildir)
+    if result.vendor:
+        recurring = find_recurring(result.vendor, months=3)
+        if len(recurring) >= 3:
+            months_found = [r["month"] for r in recurring]
+            result_dict["recurring_info"] = {
+                "vendor":       result.vendor,
+                "months":       months_found,
+                "avg_total":    round(sum(r["avg_total"] for r in recurring) / len(recurring), 2),
+                "message":      f"Bu firmadan {len(recurring)} aydır düzenli fatura geliyor.",
+            }
+
+    return result_dict
 
 
 @router.post("/upload-multi")
