@@ -17,16 +17,17 @@ PLANS = {
 
 _DDL = """
 CREATE TABLE IF NOT EXISTS users (
-    id            TEXT PRIMARY KEY,
-    email         TEXT UNIQUE NOT NULL,
-    password_hash TEXT NOT NULL,
-    full_name     TEXT,
-    plan          TEXT NOT NULL DEFAULT 'free',
-    plan_expires  TEXT,
-    is_active     INTEGER NOT NULL DEFAULT 1,
-    is_admin      INTEGER NOT NULL DEFAULT 0,
-    created_at    TEXT NOT NULL,
-    last_login    TEXT
+    id                      TEXT PRIMARY KEY,
+    email                   TEXT UNIQUE NOT NULL,
+    password_hash           TEXT NOT NULL,
+    full_name               TEXT,
+    plan                    TEXT NOT NULL DEFAULT 'free',
+    plan_expires            TEXT,
+    stripe_subscription_id  TEXT,
+    is_active               INTEGER NOT NULL DEFAULT 1,
+    is_admin                INTEGER NOT NULL DEFAULT 0,
+    created_at              TEXT NOT NULL,
+    last_login              TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_user_email ON users(email);
 
@@ -111,6 +112,21 @@ def update_plan(uid: str, plan: str, months: int = 1):
     with _conn() as c:
         c.execute("UPDATE users SET plan=?, plan_expires=? WHERE id=?",
                   (plan, expires, uid))
+
+
+def update_user_plan(uid: str, plan: str, stripe_subscription_id: str | None):
+    """Stripe webhook'tan plan güncelle."""
+    expires = (datetime.utcnow() + timedelta(days=30)).isoformat()
+    with _LOCK:
+        with _conn() as c:
+            # Migration: kolon yoksa ekle
+            cols = [r[1] for r in c.execute("PRAGMA table_info(users)").fetchall()]
+            if "stripe_subscription_id" not in cols:
+                c.execute("ALTER TABLE users ADD COLUMN stripe_subscription_id TEXT")
+            c.execute(
+                "UPDATE users SET plan=?, plan_expires=?, stripe_subscription_id=? WHERE id=?",
+                (plan, expires, stripe_subscription_id, uid),
+            )
 
 
 # ── Refresh Token ─────────────────────────────────────────

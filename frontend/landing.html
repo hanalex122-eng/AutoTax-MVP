@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>AutoTax.cloud — Akıllı Fatura Yönetimi</title>
+  <meta name="description" content="OCR, QR kod okuma, çok dilli destek ve muhasebe defteri. 8 dilde fatura okuyun, Excel'e aktarın.">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --brand:    #6366f1;
+      --brand-d:  #4f46e5;
+      --success:  #16a34a;
+      --danger:   #dc2626;
+      --dark:     #0f172a;
+      --gray:     #64748b;
+      --light:    #f8fafc;
+      --card:     #ffffff;
+      --border:   #e2e8f0;
+      --radius:   14px;
+    }
+    html { scroll-behavior: smooth; }
+    body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--light); color: var(--dark); }
+
+    /* ── NAV ── */
+    nav {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(255,255,255,.92); backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      padding: 0 5%; display: flex; align-items: center; justify-content: space-between; height: 64px;
+    }
+    .nav-logo { font-size: 22px; font-weight: 800; color: var(--brand); text-decoration: none; }
+    .nav-logo b { color: var(--dark); }
+    .nav-links { display: flex; gap: 32px; list-style: none; }
+    .nav-links a { color: var(--gray); text-decoration: none; font-size: 14px; font-weight: 500; transition: color .2s; }
+    .nav-links a:hover { color: var(--brand); }
+    .nav-cta { display: flex; gap: 10px; }
+    .btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 22px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; text-decoration: none; transition: all .2s; border: none; }
+    .btn-outline { border: 2px solid var(--border); color: var(--dark); background: transparent; }
+    .btn-outline:hover { border-color: var(--brand); color: var(--brand); }
+    .btn-primary { background: var(--brand); color: #fff; }
+    .btn-primary:hover { background: var(--brand-d); transform: translateY(-1px); box-shadow: 0 4px 14px rgba(99,102,241,.4); }
+    .btn-success { background: var(--success); color: #fff; }
+    .btn-success:hover { background: #15803d; transform: translateY(-1px); }
+    .btn-lg { padding: 14px 32px; font-size: 16px; border-radius: 10px; }
+
+    /* ── HERO ── */
+    .hero {
+      background: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #1e1b4b 100%);
+      padding: 100px 5% 80px; text-align: center; color: #fff;
+      position: relative; overflow: hidden;
+    }
+    .hero::before {
+      content: ''; position: absolute; inset: 0;
+      background: radial-gradient(ellipse at 50% 0%, rgba(99,102,241,.3) 0%, transparent 70%);
+    }
+    .hero-badge {
+      display: inline-block; background: rgba(99,102,241,.3); border: 1px solid rgba(99,102,241,.5);
+      color: #a5b4fc; padding: 6px 16px; border-radius: 20px; font-size: 13px; font-weight: 600; margin-bottom: 24px;
+    }
+    .hero h1 { font-size: clamp(32px, 5vw, 62px); font-weight: 900; line-height: 1.1; margin-bottom: 20px; position: relative; }
+    .hero h1 span { color: #a5b4fc; }
+    .hero p { font-size: 18px; color: #cbd5e1; max-width: 600px; margin: 0 auto 40px; line-height: 1.7; position: relative; }
+    .hero-btns { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; position: relative; }
+    .hero-stats { display: flex; gap: 48px; justify-content: center; margin-top: 64px; flex-wrap: wrap; position: relative; }
+    .hero-stat { text-align: center; }
+    .hero-stat-num { font-size: 36px; font-weight: 900; color: #a5b4fc; }
+    .hero-stat-label { font-size: 13px; color: #94a3b8; margin-top: 4px; }
+
+    /* ── FEATURES ── */
+    .section { padding: 80px 5%; }
+    .section-title { text-align: center; margin-bottom: 56px; }
+    .section-title h2 { font-size: clamp(28px, 3vw, 42px); font-weight: 800; margin-bottom: 12px; }
+    .section-title p { color: var(--gray); font-size: 17px; max-width: 520px; margin: 0 auto; }
+    .features-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px; max-width: 1100px; margin: 0 auto; }
+    .feat-card {
+      background: var(--card); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 32px; transition: all .25s;
+    }
+    .feat-card:hover { transform: translateY(-4px); box-shadow: 0 12px 32px rgba(0,0,0,.08); border-color: var(--brand); }
+    .feat-icon { width: 52px; height: 52px; border-radius: 12px; background: linear-gradient(135deg, #ede9fe, #ddd6fe); display: flex; align-items: center; justify-content: center; margin-bottom: 20px; font-size: 24px; }
+    .feat-card h3 { font-size: 18px; font-weight: 700; margin-bottom: 10px; }
+    .feat-card p { color: var(--gray); font-size: 14px; line-height: 1.65; }
+
+    /* ── LANGUAGES ── */
+    .langs { background: var(--dark); padding: 60px 5%; text-align: center; }
+    .langs h2 { color: #fff; font-size: 28px; font-weight: 800; margin-bottom: 8px; }
+    .langs p { color: #94a3b8; margin-bottom: 36px; }
+    .lang-chips { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+    .lang-chip { background: rgba(99,102,241,.15); border: 1px solid rgba(99,102,241,.3); color: #a5b4fc; padding: 8px 20px; border-radius: 20px; font-size: 14px; font-weight: 600; }
+
+    /* ── HOW IT WORKS ── */
+    .steps { display: flex; gap: 0; max-width: 900px; margin: 0 auto; position: relative; }
+    .steps::before { content: ''; position: absolute; top: 28px; left: 10%; right: 10%; height: 2px; background: linear-gradient(90deg, var(--brand), #a5b4fc); z-index: 0; }
+    .step { flex: 1; text-align: center; padding: 0 20px; position: relative; z-index: 1; }
+    .step-num { width: 56px; height: 56px; border-radius: 50%; background: var(--brand); color: #fff; font-size: 20px; font-weight: 800; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px; box-shadow: 0 0 0 6px #ede9fe; }
+    .step h3 { font-size: 16px; font-weight: 700; margin-bottom: 8px; }
+    .step p { color: var(--gray); font-size: 13px; line-height: 1.6; }
+
+    /* ── PRICING ── */
+    .pricing { background: linear-gradient(180deg, var(--light) 0%, #ede9fe22 100%); }
+    .pricing-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px; max-width: 960px; margin: 0 auto; }
+    .price-card {
+      background: var(--card); border: 2px solid var(--border); border-radius: 20px;
+      padding: 40px 32px; text-align: center; transition: all .25s; position: relative;
+    }
+    .price-card.popular { border-color: var(--brand); box-shadow: 0 0 0 4px rgba(99,102,241,.1); }
+    .popular-badge {
+      position: absolute; top: -14px; left: 50%; transform: translateX(-50%);
+      background: var(--brand); color: #fff; padding: 4px 18px; border-radius: 20px; font-size: 12px; font-weight: 700;
+    }
+    .price-plan { font-size: 13px; font-weight: 700; color: var(--gray); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 8px; }
+    .price-amount { font-size: 52px; font-weight: 900; color: var(--dark); line-height: 1; }
+    .price-amount sup { font-size: 22px; vertical-align: top; margin-top: 10px; }
+    .price-amount sub { font-size: 16px; color: var(--gray); font-weight: 400; }
+    .price-desc { color: var(--gray); font-size: 14px; margin: 12px 0 28px; }
+    .price-features { list-style: none; text-align: left; margin-bottom: 32px; }
+    .price-features li { padding: 8px 0; font-size: 14px; color: var(--dark); display: flex; align-items: center; gap: 10px; border-bottom: 1px solid var(--border); }
+    .price-features li:last-child { border: none; }
+    .price-features li::before { content: '✓'; color: var(--success); font-weight: 700; flex-shrink: 0; }
+    .price-features li.no::before { content: '✗'; color: #cbd5e1; }
+    .price-features li.no { color: var(--gray); }
+
+    /* ── CTA ── */
+    .cta-section {
+      background: linear-gradient(135deg, var(--brand) 0%, #7c3aed 100%);
+      padding: 80px 5%; text-align: center; color: #fff;
+    }
+    .cta-section h2 { font-size: clamp(28px, 3vw, 42px); font-weight: 800; margin-bottom: 16px; }
+    .cta-section p { font-size: 18px; opacity: .85; margin-bottom: 36px; }
+
+    /* ── FOOTER ── */
+    footer { background: var(--dark); color: #94a3b8; padding: 48px 5%; text-align: center; }
+    footer .footer-logo { font-size: 20px; font-weight: 800; color: #fff; margin-bottom: 16px; }
+    footer p { font-size: 13px; }
+    footer a { color: #a5b4fc; text-decoration: none; }
+
+    @media(max-width: 768px) {
+      .nav-links { display: none; }
+      .steps { flex-direction: column; }
+      .steps::before { display: none; }
+      .hero { padding: 60px 5%; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── NAV ── -->
+<nav>
+  <a href="/" class="nav-logo">AutoTax<b>.cloud</b></a>
+  <ul class="nav-links">
+    <li><a href="#features">Özellikler</a></li>
+    <li><a href="#how">Nasıl Çalışır</a></li>
+    <li><a href="#pricing">Fiyatlar</a></li>
+  </ul>
+  <div class="nav-cta">
+    <a href="/login.html" class="btn btn-outline">Giriş Yap</a>
+    <a href="/register.html" class="btn btn-primary">Ücretsiz Başla</a>
+  </div>
+</nav>
+
+<!-- ── HERO ── -->
+<section class="hero">
+  <div class="hero-badge">🚀 Yeni nesil fatura yönetimi</div>
+  <h1>Faturalarınızı <span>Yapay Zeka</span> ile Yönetin</h1>
+  <p>OCR, QR kod, 8 dil desteği ve muhasebe defteri. Fotoğraf çekin, sistem otomatik okusun, Excel'e aktarsın.</p>
+  <div class="hero-btns">
+    <a href="/register.html" class="btn btn-primary btn-lg">Ücretsiz Deneyin — 14 Gün</a>
+    <a href="#pricing" class="btn btn-outline btn-lg" style="color:#fff;border-color:rgba(255,255,255,.3)">Fiyatları Gör</a>
+  </div>
+  <div class="hero-stats">
+    <div class="hero-stat">
+      <div class="hero-stat-num">100M+</div>
+      <div class="hero-stat-label">Fatura kapasitesi</div>
+    </div>
+    <div class="hero-stat">
+      <div class="hero-stat-num">8</div>
+      <div class="hero-stat-label">Desteklenen dil</div>
+    </div>
+    <div class="hero-stat">
+      <div class="hero-stat-num">%99</div>
+      <div class="hero-stat-label">OCR doğruluğu</div>
+    </div>
+    <div class="hero-stat">
+      <div class="hero-stat-num">GDPR</div>
+      <div class="hero-stat-label">Uyumlu</div>
+    </div>
+  </div>
+</section>
+
+<!-- ── FEATURES ── -->
+<section class="section" id="features">
+  <div class="section-title">
+    <h2>Her Şey Tek Platformda</h2>
+    <p>Fatura yönetiminde ihtiyacınız olan her özellik, kutudan çıktığı gibi hazır.</p>
+  </div>
+  <div class="features-grid">
+    <div class="feat-card">
+      <div class="feat-icon">📷</div>
+      <h3>Akıllı OCR Okuma</h3>
+      <p>Fotoğraf veya PDF yükleyin — sistem firma adı, tutar, KDV, tarih ve fatura numarasını otomatik çıkarsın.</p>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">🌍</div>
+      <h3>8 Dil Desteği</h3>
+      <p>Türkçe, Almanca, İngilizce, Fransızca, İspanyolca, Arapça, Korece ve Çince faturalar sorunsuz okunur.</p>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">📊</div>
+      <h3>Muhasebe Defteri</h3>
+      <p>Gelir ve gider faturalarını ayırın, aylık kâr/zarar raporunu otomatik görün. NET bakiye anlık hesaplanır.</p>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">📱</div>
+      <h3>QR Kod Okuma</h3>
+      <p>Faturalardaki QR kodları otomatik taranır ve ek veriler çıkarılır. Hiçbir bilgi kaybolmaz.</p>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">📥</div>
+      <h3>Excel & CSV Export</h3>
+      <p>Tüm faturalarınızı tek tıkla Excel veya CSV olarak indirin. Muhasebeciye göndermek hiç bu kadar kolay olmamıştı.</p>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">✋</div>
+      <h3>Manuel Düzeltme Kuyruğu</h3>
+      <p>Okunamayan faturalar otomatik işaretlenir, size uyarı gelir. Siz sadece eksik alanı doldurun.</p>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">🔍</div>
+      <h3>Güçlü Filtreleme</h3>
+      <p>Tarih aralığı, firma adı, kategori, ödeme yöntemi ile saniyeler içinde arama yapın.</p>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon">🔒</div>
+      <h3>Güvenli & GDPR Uyumlu</h3>
+      <p>Verileriniz şifreli saklanır. JWT + refresh token ile güvenli oturum yönetimi. AB veri yasalarına tam uyumlu.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ── LANGUAGES ── -->
+<div class="langs">
+  <h2>8 Dilde Fatura Okuma</h2>
+  <p>Dünya genelinde müşterilerinizin faturalarını sorunsuz işleyin</p>
+  <div class="lang-chips">
+    <span class="lang-chip">🇹🇷 Türkçe</span>
+    <span class="lang-chip">🇩🇪 Almanca</span>
+    <span class="lang-chip">🇬🇧 İngilizce</span>
+    <span class="lang-chip">🇫🇷 Fransızca</span>
+    <span class="lang-chip">🇪🇸 İspanyolca</span>
+    <span class="lang-chip">🇸🇦 Arapça</span>
+    <span class="lang-chip">🇰🇷 Korece</span>
+    <span class="lang-chip">🇨🇳 Çince</span>
+  </div>
+</div>
+
+<!-- ── HOW IT WORKS ── -->
+<section class="section" id="how" style="background:#fff;">
+  <div class="section-title">
+    <h2>3 Adımda Hazır</h2>
+    <p>Karmaşık kurulum yok. Hesap açın, yükleyin, analiz edin.</p>
+  </div>
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">1</div>
+      <h3>Hesap Açın</h3>
+      <p>E-posta ile 30 saniyede kayıt olun. Kredi kartı gerekmez.</p>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <h3>Fatura Yükleyin</h3>
+      <p>Fotoğraf, PDF veya tarama — sistem otomatik okur.</p>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <h3>Analiz Edin</h3>
+      <p>Raporlara bakın, Excel'e aktarın, muhasebeciye gönderin.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ── PRICING ── -->
+<section class="section pricing" id="pricing">
+  <div class="section-title">
+    <h2>Şeffaf Fiyatlandırma</h2>
+    <p>İhtiyacınıza göre plan seçin. İstediğiniz zaman yükseltin veya iptal edin.</p>
+  </div>
+  <div class="pricing-grid">
+
+    <!-- FREE -->
+    <div class="price-card">
+      <div class="price-plan">Başlangıç</div>
+      <div class="price-amount"><sup>€</sup>0<sub>/ay</sub></div>
+      <div class="price-desc">Denemek için mükemmel</div>
+      <ul class="price-features">
+        <li>50 fatura / ay</li>
+        <li>OCR okuma (3 dil)</li>
+        <li>Excel export</li>
+        <li>Muhasebe defteri</li>
+        <li class="no">QR kod okuma</li>
+        <li class="no">Öncelikli destek</li>
+        <li class="no">API erişimi</li>
+      </ul>
+      <a href="/register.html" class="btn btn-outline" style="width:100%;justify-content:center;">Ücretsiz Başla</a>
+    </div>
+
+    <!-- PRO -->
+    <div class="price-card popular">
+      <div class="popular-badge">⭐ En Popüler</div>
+      <div class="price-plan">Profesyonel</div>
+      <div class="price-amount"><sup>€</sup>9<sub>.99/ay</sub></div>
+      <div class="price-desc">Bireysel ve serbest çalışanlar için</div>
+      <ul class="price-features">
+        <li>2.000 fatura / ay</li>
+        <li>OCR okuma (8 dil)</li>
+        <li>Excel + CSV export</li>
+        <li>Muhasebe defteri</li>
+        <li>QR kod okuma</li>
+        <li>E-posta desteği</li>
+        <li class="no">API erişimi</li>
+      </ul>
+      <a href="/register.html?plan=pro" class="btn btn-primary" style="width:100%;justify-content:center;" id="btnProMonthly">14 Gün Ücretsiz Dene</a>
+    </div>
+
+    <!-- BUSINESS -->
+    <div class="price-card">
+      <div class="price-plan">İşletme</div>
+      <div class="price-amount"><sup>€</sup>29<sub>.99/ay</sub></div>
+      <div class="price-desc">KOBİ ve muhasebe firmaları için</div>
+      <ul class="price-features">
+        <li>Sınırsız fatura</li>
+        <li>OCR okuma (8 dil)</li>
+        <li>Excel + CSV export</li>
+        <li>Muhasebe defteri</li>
+        <li>QR kod okuma</li>
+        <li>Öncelikli destek</li>
+        <li>API erişimi</li>
+      </ul>
+      <a href="/register.html?plan=business" class="btn btn-success" style="width:100%;justify-content:center;" id="btnBizMonthly">Hemen Başla</a>
+    </div>
+
+  </div>
+  <p style="text-align:center;color:var(--gray);margin-top:32px;font-size:14px;">
+    💳 Kredi kartı güvenli şekilde Stripe ile işlenir. İstediğiniz zaman iptal edin.
+  </p>
+</section>
+
+<!-- ── CTA ── -->
+<section class="cta-section">
+  <h2>Hemen Başlayın — Ücretsiz</h2>
+  <p>14 gün boyunca tüm özellikleri deneyin. Kredi kartı gerekmez.</p>
+  <a href="/register.html" class="btn btn-lg" style="background:#fff;color:var(--brand);">Ücretsiz Hesap Aç →</a>
+</section>
+
+<!-- ── FOOTER ── -->
+<footer>
+  <div class="footer-logo">AutoTax<b style="color:#a5b4fc">.cloud</b></div>
+  <p>© 2026 AutoTax.cloud — Tüm hakları saklıdır.</p>
+  <p style="margin-top:8px;">
+    <a href="/login.html">Giriş Yap</a> ·
+    <a href="/register.html">Kayıt Ol</a> ·
+    <a href="mailto:support@autotax.cloud">Destek</a>
+  </p>
+</footer>
+
+</body>
+</html>
