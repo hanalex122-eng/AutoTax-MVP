@@ -361,7 +361,7 @@ function renderTable(data) {
       <td class="th-chk"><input type="checkbox" class="row-chk" data-i="${i}"></td>
       <td title="${esc(inv.filename)}">${esc(short(inv.filename, 22))}${inv.needs_review ? ' <span class="review-dot" title="Ä°nceleme bekliyor">!</span>' : ''}</td>
       <td title="${esc(inv.vendor)}">${esc(inv.vendor) || '<span class="missing">â€”</span>'}</td>
-      <td>${esc(inv.date) || '<span class="missing">â€”</span>'}</td>
+      <td>${formatDate(inv.date) || '<span class="missing">—</span>'}</td>
       <td>${esc(inv.time) || "â€”"}</td>
       <td class="num ${!inv.total ? 'missing' : ''}">${inv.total ? inv.total.toFixed(2) : 'âš  Yok'}</td>
       <td class="num">${inv.vat_rate ? esc(String(inv.vat_rate)) + "%" : "â€”"}</td>
@@ -978,6 +978,28 @@ function fmtSize(b) {
 }
 function short(s, n) { return s && s.length > n ? s.slice(0,n-1)+"â€¦" : (s||""); }
 function today()     { return new Date().toISOString().slice(0,10); }
+
+// Kullanıcının bölgesine göre tarih formatı (DB'de YYYY-MM-DD, gösterimde yerel format)
+const USER_LOCALE = navigator.language || "de-DE";
+function formatDate(isoStr) {
+  if (!isoStr) return "";
+  try {
+    const [y, m, d] = isoStr.split("-");
+    const dt = new Date(Number(y), Number(m) - 1, Number(d));
+    return dt.toLocaleDateString(USER_LOCALE, { year:"numeric", month:"2-digit", day:"2-digit" });
+  } catch { return isoStr; }
+}
+// Yerel tarih → ISO (filtreler için)
+function localToISO(localStr) {
+  if (!localStr) return "";
+  // Zaten ISO formatındaysa direkt döndür
+  if (/^\d{4}-\d{2}-\d{2}$/.test(localStr)) return localStr;
+  try {
+    const dt = new Date(localStr);
+    if (isNaN(dt)) return localStr;
+    return dt.toISOString().slice(0, 10);
+  } catch { return localStr; }
+}
 function round2(v)   { return Math.round(v*100)/100; }
 function dl(content, filename, mime) {
   const a = document.createElement("a");
