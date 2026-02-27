@@ -48,6 +48,24 @@ async def global_handler(request: Request, exc: Exception):
     )
 
 
+@app.middleware("http")
+async def inject_user(request: Request, call_next):
+    """JWT varsa user'ı request.state'e ekle (plan kontrolü için)."""
+    from app.routes.auth import decode_access
+    auth = request.headers.get("Authorization", "")
+    if auth.startswith("Bearer "):
+        try:
+            payload = decode_access(auth.split(" ", 1)[1])
+            from app.services.user_db import get_user_by_id
+            user = get_user_by_id(payload.get("sub", ""))
+            request.state.user = user
+        except Exception:
+            request.state.user = None
+    else:
+        request.state.user = None
+    return await call_next(request)
+
+
 # Auth (public)
 app.include_router(auth_router,   prefix="/api")
 app.include_router(stripe_router, prefix="/api")

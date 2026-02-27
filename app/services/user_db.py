@@ -10,9 +10,42 @@ _LOCK    = Lock()
 
 # ── Plan tanımları ────────────────────────────────────────
 PLANS = {
-    "free":       {"label": "Free",       "monthly_invoices": 50,        "price_usd": 0},
-    "pro":        {"label": "Pro",        "monthly_invoices": 500,       "price_usd": 29},
-    "enterprise": {"label": "Enterprise", "monthly_invoices": 999_999_999, "price_usd": 99},
+    "free": {
+        "label":            "Ücretsiz",
+        "monthly_invoices": 50,
+        "max_members":      1,
+        "languages":        3,
+        "qr":               False,
+        "api":              False,
+        "price_eur":        0,
+    },
+    "personal": {
+        "label":            "Kişisel",
+        "monthly_invoices": 2_000,
+        "max_members":      1,
+        "languages":        8,
+        "qr":               True,
+        "api":              False,
+        "price_eur":        4.99,
+    },
+    "family": {
+        "label":            "Aile",
+        "monthly_invoices": 10_000,
+        "max_members":      5,
+        "languages":        8,
+        "qr":               True,
+        "api":              False,
+        "price_eur":        9.99,
+    },
+    "business": {
+        "label":            "İşletme",
+        "monthly_invoices": -1,
+        "max_members":      -1,
+        "languages":        8,
+        "qr":               True,
+        "api":              True,
+        "price_eur":        29.99,
+    },
 }
 
 _DDL = """
@@ -24,12 +57,27 @@ CREATE TABLE IF NOT EXISTS users (
     plan                    TEXT NOT NULL DEFAULT 'free',
     plan_expires            TEXT,
     stripe_subscription_id  TEXT,
+    family_id               TEXT,
+    role                    TEXT NOT NULL DEFAULT 'owner',
     is_active               INTEGER NOT NULL DEFAULT 1,
     is_admin                INTEGER NOT NULL DEFAULT 0,
     created_at              TEXT NOT NULL,
     last_login              TEXT
 );
-CREATE INDEX IF NOT EXISTS idx_user_email ON users(email);
+CREATE INDEX IF NOT EXISTS idx_user_email  ON users(email);
+CREATE INDEX IF NOT EXISTS idx_family      ON users(family_id);
+
+CREATE TABLE IF NOT EXISTS family_invites (
+    id          TEXT PRIMARY KEY,
+    family_id   TEXT NOT NULL,
+    email       TEXT NOT NULL,
+    invited_by  TEXT NOT NULL,
+    status      TEXT NOT NULL DEFAULT 'pending',
+    created_at  TEXT NOT NULL,
+    expires_at  TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_invite_email ON family_invites(email);
+CREATE INDEX IF NOT EXISTS idx_invite_fam   ON family_invites(family_id);
 
 CREATE TABLE IF NOT EXISTS refresh_tokens (
     token      TEXT PRIMARY KEY,
@@ -188,11 +236,65 @@ def increment_usage(user_id: str) -> int:
 
 
 def check_quota(user: dict) -> tuple[bool, int, int]:
-    """(allowed, used, limit) döner."""
+    """(allowed, used, limit) döner. -1 = sınırsız."""
     plan   = user.get("plan", "free")
     limit  = PLANS.get(plan, PLANS["free"])["monthly_invoices"]
+    if limit == -1:
+        return True, 0, -1
     used   = get_usage(user["id"])
     return used < limit, used, limit
+
+
+# ── Aile üyesi yönetimi ───────────────────────────────────
+def get_family_members(family_id: str) -> list[dict]:
+    with _conn() as c:
+        rows = c.execute(
+            "SELECT id,email,full_name,role,plan,created_at FROM users WHERE family_id=?",
+            (family_id,)
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def invite_family_member(family_id: str, email: str, invited_by: str) -> dict:
+    invite_id = str(uuid.uuid4())
+    now       = datetime.utcnow().isoformat()
+    expires   = (datetime.utcnow() + timedelta(days=7)).isoformat()
+    with _LOCK:
+        with _conn() as c:
+            c.execute(
+                "INSERT OR REPLACE INTO family_invites (id,family_id,email,invited_by,status,created_at,expires_at) "
+                "VALUES (?,?,?,?,?,?,?)",
+                (invite_id, family_id, email.lower().strip(), invited_by, "pending", now, expires),
+            )
+    return {"invite_id": invite_id, "email": email, "expires_at": expires}
+
+
+def accept_family_invite(invite_id: str, user_id: str) -> bool:
+    with _LOCK:
+        with _conn() as c:
+            inv = c.execute(
+                "SELECT * FROM family_invites WHERE id=? AND status='pending'", (invite_id,)
+            ).fetchone()
+            if not inv:
+                return False
+            if inv["expires_at"] < datetime.utcnow().isoformat():
+                return False
+            c.execute("UPDATE family_invites SET status='accepted' WHERE id=?", (invite_id,))
+            c.execute(
+                "UPDATE users SET family_id=?, role='member' WHERE id=?",
+                (inv["family_id"], user_id)
+            )
+    return True
+
+
+def remove_family_member(family_id: str, member_id: str) -> bool:
+    with _LOCK:
+        with _conn() as c:
+            c.execute(
+                "UPDATE users SET family_id=NULL, role='owner' WHERE id=? AND family_id=? AND role='member'",
+                (member_id, family_id)
+            )
+    return True
 
 
 _init()

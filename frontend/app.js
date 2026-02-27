@@ -105,6 +105,7 @@ function setupNav() {
       if (view === "ledger") { initLedger(); loadLedger(); }
     });
   });
+  loadPlanWidget();
 }
 
 // â”€â”€ THEME â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -1111,3 +1112,36 @@ async function loadLedger() {
 }
 
 window.ldgGoPage = (p) => { _ldgPage = p; loadLedger(); };
+
+// ── Plan widget ──────────────────────────────────────────────────────────────
+async function loadPlanWidget() {
+  try {
+    const res = await authFetch("/api/stripe/plan");
+    if (!res || !res.ok) return;
+    const d = await res.json();
+    const plan    = d.plan || "free";
+    const limits  = d.limits || {};
+    const display = d.display || plan;
+    const used    = d.used || 0;
+    const limit   = limits.invoices ?? 50;
+
+    const badge = document.getElementById("planBadge");
+    if (badge) { badge.textContent = display; badge.className = "plan-badge " + plan; }
+
+    const upgrade = document.getElementById("planUpgrade");
+    if (upgrade) upgrade.style.display = plan === "business" ? "none" : "inline";
+
+    if (limit !== -1) {
+      const barWrap = document.getElementById("planBarWrap");
+      const barFill = document.getElementById("planBarFill");
+      const barLabel = document.getElementById("planBarLabel");
+      if (barWrap) barWrap.style.display = "flex";
+      const pct = Math.min(100, Math.round((used / limit) * 100));
+      if (barFill) {
+        barFill.style.width = pct + "%";
+        barFill.className = "plan-bar-fill" + (pct >= 90 ? " full" : pct >= 70 ? " warn" : "");
+      }
+      if (barLabel) barLabel.textContent = used + " / " + limit;
+    }
+  } catch (e) { /* sessiz hata */ }
+}

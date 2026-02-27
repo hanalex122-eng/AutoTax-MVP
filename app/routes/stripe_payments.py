@@ -11,14 +11,16 @@ STRIPE_CANCEL_URL      = os.getenv("STRIPE_CANCEL_URL",  "http://localhost:8000/
 
 # Stripe fiyat ID'leri (Stripe Dashboard'dan alın)
 PRICE_IDS = {
-    "pro":      os.getenv("STRIPE_PRICE_PRO",      "price_pro_monthly"),
-    "business": os.getenv("STRIPE_PRICE_BUSINESS", "price_business_monthly"),
+    "personal": os.getenv("STRIPE_PRICE_PERSONAL", "price_personal_monthly"),
+    "family":   os.getenv("STRIPE_PRICE_FAMILY",   "price_family_monthly"),
+    "business": os.getenv("STRIPE_PRICE_BUSINESS",  "price_business_monthly"),
 }
 
 PLAN_LIMITS = {
-    "free":     {"invoices": 50,    "languages": 3},
-    "pro":      {"invoices": 2000,  "languages": 8},
-    "business": {"invoices": -1,    "languages": 8},  # -1 = sınırsız
+    "free":     {"invoices": 50,     "languages": 3,  "members": 1},
+    "personal": {"invoices": 2000,   "languages": 8,  "members": 1},
+    "family":   {"invoices": 10000,  "languages": 8,  "members": 5},
+    "business": {"invoices": -1,     "languages": 8,  "members": -1},
 }
 
 
@@ -131,8 +133,9 @@ async def get_plan(request: Request):
         "plan":    plan,
         "limits":  limits,
         "display": {
-            "free":     "Başlangıç",
-            "pro":      "Profesyonel",
+            "free":     "Ücretsiz",
+            "personal": "Kişisel",
+            "family":   "Aile",
             "business": "İşletme",
         }.get(plan, plan),
     }

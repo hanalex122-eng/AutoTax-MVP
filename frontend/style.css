@@ -655,6 +655,23 @@ tr.row-review:hover td    { background: #fef3c7 !important; }
 .btn-warning:hover { background: #d97706; }
 .btn-sm { height: 30px; padding: 0 10px; font-size: 12px; }
 
+/* ── Plan widget (sidebar alt) ───────────────────────────── */
+.plan-widget { padding: 10px 12px; background: rgba(99,102,241,.08); border-radius: 10px; margin-bottom: 8px; }
+.plan-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+.plan-badge { font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 12px; background: var(--brand); color: #fff; text-transform: uppercase; letter-spacing: .5px; }
+.plan-badge.free     { background: #64748b; }
+.plan-badge.personal { background: #6366f1; }
+.plan-badge.family   { background: #16a34a; }
+.plan-badge.business { background: #f59e0b; color: #000; }
+.plan-upgrade { font-size: 11px; font-weight: 700; color: var(--brand); text-decoration: none; }
+.plan-upgrade:hover { text-decoration: underline; }
+.plan-bar-wrap { display: flex; align-items: center; gap: 8px; }
+.plan-bar-track { flex: 1; height: 6px; background: rgba(0,0,0,.1); border-radius: 3px; overflow: hidden; }
+.plan-bar-fill { height: 100%; background: var(--brand); border-radius: 3px; transition: width .4s; }
+.plan-bar-fill.warn { background: #f59e0b; }
+.plan-bar-fill.full { background: #dc2626; }
+.plan-bar-label { font-size: 10px; color: var(--gray); white-space: nowrap; }
+
 /* ── Muhasebe Defteri KPI kartlar ───────────────────────── */
 .kpi-income { border-left: 4px solid #16a34a; }
 .kpi-expense { border-left: 4px solid #dc2626; }

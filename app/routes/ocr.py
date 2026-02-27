@@ -1,4 +1,4 @@
-from fastapi import APIRouter, UploadFile, File, HTTPException, Body
+from fastapi import APIRouter, UploadFile, File, HTTPException, Body, Request, Depends
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import JSONResponse
 from typing import List, Optional
@@ -13,6 +13,7 @@ from app.services.invoice_db import (
 )
 from app.services.qr_reader import read_qr, parse_qr
 from app.models.invoice import InvoiceResult
+from app.services.user_db import check_quota, increment_usage, PLANS
 
 router = APIRouter(prefix="/ocr", tags=["OCR"])
 
@@ -126,14 +127,40 @@ async def _process(f: UploadFile) -> InvoiceResult:
 
 
 @router.post("/upload", response_model=InvoiceResult)
-async def upload(file: UploadFile = File(...)):
-    return await _process(file)
+async def upload(request: Request, file: UploadFile = File(...)):
+    user = getattr(request.state, "user", None)
+    if user:
+        allowed, used, limit = check_quota(user)
+        if not allowed:
+            plan_label = PLANS.get(user.get("plan","free"), {}).get("label","")
+            raise HTTPException(
+                status_code=429,
+                detail=f"Aylık fatura limitinize ulaştınız ({used}/{limit}). "
+                       f"{plan_label} planınızı yükseltin."
+            )
+    result = await _process(file)
+    if user:
+        increment_usage(user["id"])
+    return result
 
 
 @router.post("/upload-multi")
-async def upload_multi(files: List[UploadFile] = File(...)):
+async def upload_multi(request: Request, files: List[UploadFile] = File(...)):
     if len(files) > 50:
         raise HTTPException(status_code=400, detail="Tek seferde maksimum 50 dosya yükleyebilirsiniz.")
+    user = getattr(request.state, "user", None)
+    if user:
+        allowed, used, limit = check_quota(user)
+        remaining = (limit - used) if limit != -1 else len(files)
+        if not allowed:
+            plan_label = PLANS.get(user.get("plan","free"), {}).get("label","")
+            raise HTTPException(
+                status_code=429,
+                detail=f"Aylık fatura limitinize ulaştınız ({used}/{limit}). "
+                       f"{plan_label} planınızı yükseltin."
+            )
+        if limit != -1 and len(files) > remaining:
+            files = files[:remaining]
     # Seri işle (concurrent race condition'ı önle)
     results = []
     errors  = []

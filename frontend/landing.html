@@ -285,58 +285,75 @@
     <h2>Şeffaf Fiyatlandırma</h2>
     <p>İhtiyacınıza göre plan seçin. İstediğiniz zaman yükseltin veya iptal edin.</p>
   </div>
-  <div class="pricing-grid">
+  <div class="pricing-grid" style="grid-template-columns:repeat(auto-fit,minmax(220px,1fr))">
 
     <!-- FREE -->
     <div class="price-card">
-      <div class="price-plan">Başlangıç</div>
+      <div class="price-plan">Ücretsiz</div>
       <div class="price-amount"><sup>€</sup>0<sub>/ay</sub></div>
-      <div class="price-desc">Denemek için mükemmel</div>
+      <div class="price-desc">Denemek için</div>
       <ul class="price-features">
         <li>50 fatura / ay</li>
-        <li>OCR okuma (3 dil)</li>
+        <li>3 dil desteği</li>
         <li>Excel export</li>
-        <li>Muhasebe defteri</li>
+        <li>1 kullanıcı</li>
         <li class="no">QR kod okuma</li>
-        <li class="no">Öncelikli destek</li>
+        <li class="no">Aile paylaşımı</li>
         <li class="no">API erişimi</li>
       </ul>
       <a href="/register.html" class="btn btn-outline" style="width:100%;justify-content:center;">Ücretsiz Başla</a>
     </div>
 
-    <!-- PRO -->
-    <div class="price-card popular">
-      <div class="popular-badge">⭐ En Popüler</div>
-      <div class="price-plan">Profesyonel</div>
-      <div class="price-amount"><sup>€</sup>9<sub>.99/ay</sub></div>
-      <div class="price-desc">Bireysel ve serbest çalışanlar için</div>
+    <!-- PERSONAL -->
+    <div class="price-card">
+      <div class="price-plan">Kişisel</div>
+      <div class="price-amount"><sup>€</sup>4<sub>.99/ay</sub></div>
+      <div class="price-desc">Serbest çalışanlar için</div>
       <ul class="price-features">
         <li>2.000 fatura / ay</li>
-        <li>OCR okuma (8 dil)</li>
+        <li>8 dil desteği</li>
         <li>Excel + CSV export</li>
-        <li>Muhasebe defteri</li>
+        <li>1 kullanıcı</li>
         <li>QR kod okuma</li>
-        <li>E-posta desteği</li>
+        <li class="no">Aile paylaşımı</li>
         <li class="no">API erişimi</li>
       </ul>
-      <a href="/register.html?plan=pro" class="btn btn-primary" style="width:100%;justify-content:center;" id="btnProMonthly">14 Gün Ücretsiz Dene</a>
+      <a href="/register.html?plan=personal" class="btn btn-outline" style="width:100%;justify-content:center;border-color:#6366f1;color:#6366f1">Deneyin</a>
+    </div>
+
+    <!-- FAMILY -->
+    <div class="price-card popular">
+      <div class="popular-badge">⭐ En Popüler</div>
+      <div class="price-plan">Aile</div>
+      <div class="price-amount"><sup>€</sup>9<sub>.99/ay</sub></div>
+      <div class="price-desc">Aile ve küçük ekipler</div>
+      <ul class="price-features">
+        <li>10.000 fatura / ay</li>
+        <li>8 dil desteği</li>
+        <li>Excel + CSV export</li>
+        <li>5 kullanıcıya kadar</li>
+        <li>QR kod okuma</li>
+        <li>Aile paylaşımı</li>
+        <li class="no">API erişimi</li>
+      </ul>
+      <a href="/register.html?plan=family" class="btn btn-primary" style="width:100%;justify-content:center;">14 Gün Ücretsiz</a>
     </div>
 
     <!-- BUSINESS -->
     <div class="price-card">
       <div class="price-plan">İşletme</div>
       <div class="price-amount"><sup>€</sup>29<sub>.99/ay</sub></div>
-      <div class="price-desc">KOBİ ve muhasebe firmaları için</div>
+      <div class="price-desc">KOBİ ve muhasebe firmaları</div>
       <ul class="price-features">
         <li>Sınırsız fatura</li>
-        <li>OCR okuma (8 dil)</li>
+        <li>8 dil desteği</li>
         <li>Excel + CSV export</li>
-        <li>Muhasebe defteri</li>
+        <li>Sınırsız kullanıcı</li>
         <li>QR kod okuma</li>
-        <li>Öncelikli destek</li>
+        <li>Aile paylaşımı</li>
         <li>API erişimi</li>
       </ul>
-      <a href="/register.html?plan=business" class="btn btn-success" style="width:100%;justify-content:center;" id="btnBizMonthly">Hemen Başla</a>
+      <a href="/register.html?plan=business" class="btn btn-success" style="width:100%;justify-content:center;">Hemen Başla</a>
     </div>
 
   </div>
