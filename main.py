@@ -13,7 +13,7 @@ from app.routes.auth  import router as auth_router, get_current_user
 ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:8000").split(",")
 
 app = FastAPI(
-    title="AutoTax OCR API",
+    title="AutoTax.cloud API",
     description="Çok dilli fatura OCR, QR okuma, analiz ve SaaS abonelik platformu",
     version="4.0.0",
     docs_url="/api/docs",
