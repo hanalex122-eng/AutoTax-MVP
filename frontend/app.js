@@ -102,6 +102,7 @@ function setupNav() {
       const view = li.dataset.view;
       document.getElementById("view-" + view).classList.add("active");
       if (view === "review") loadReviewQueue(1);
+      if (view === "ledger") { initLedger(); loadLedger(); }
     });
   });
 }
@@ -1007,3 +1008,106 @@ function dl(content, filename, mime) {
   a.download = filename; a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 10000);
 }
+
+// ── Muhasebe Defteri ─────────────────────────────────────────────────────────
+let _ldgPage = 1;
+const _ldgPerPage = 50;
+
+function initLedger() {
+  document.getElementById("ldgFilter")?.addEventListener("click", () => { _ldgPage = 1; loadLedger(); });
+  document.getElementById("ldgReset")?.addEventListener("click", () => {
+    document.getElementById("ldgStart").value = "";
+    document.getElementById("ldgEnd").value = "";
+    document.getElementById("ldgVendor").value = "";
+    _ldgPage = 1; loadLedger();
+  });
+}
+
+async function loadLedger() {
+  const start  = document.getElementById("ldgStart")?.value  || "";
+  const end    = document.getElementById("ldgEnd")?.value    || "";
+  const vendor = document.getElementById("ldgVendor")?.value || "";
+
+  let url = `/api/stats/ledger?page=${_ldgPage}&per_page=${_ldgPerPage}`;
+  if (start)  url += `&start=${start}`;
+  if (end)    url += `&end=${end}`;
+  if (vendor) url += `&vendor=${encodeURIComponent(vendor)}`;
+
+  // Export link güncelle
+  let xlsUrl = `/api/stats/export/ledger-excel?`;
+  if (start)  xlsUrl += `&start=${start}`;
+  if (end)    xlsUrl += `&end=${end}`;
+  if (vendor) xlsUrl += `&vendor=${encodeURIComponent(vendor)}`;
+  const ldgExcel = document.getElementById("ldgExcel");
+  if (ldgExcel) ldgExcel.href = xlsUrl;
+
+  const res = await authFetch(url);
+  if (!res || !res.ok) return;
+  const d = await res.json();
+
+  const fmt = v => (v !== null && v !== undefined) ? v.toLocaleString(USER_LOCALE, {minimumFractionDigits:2, maximumFractionDigits:2}) : "—";
+
+  // KPI kartlar
+  document.getElementById("ldgIncome").textContent       = fmt(d.total_income);
+  document.getElementById("ldgExpense").textContent      = fmt(d.total_expense);
+  document.getElementById("ldgNet").textContent          = fmt(d.net);
+  document.getElementById("ldgNetLabel").textContent     = d.net_label;
+  document.getElementById("ldgIncomeCount").textContent  = `${d.count_income} fatura`;
+  document.getElementById("ldgExpenseCount").textContent = `${d.count_expense} fatura`;
+  document.getElementById("ldgVatIncome").textContent    = fmt(d.vat_income);
+  document.getElementById("ldgVatExpense").textContent   = `Ödenen: ${fmt(d.vat_expense)}`;
+  const netCard = document.getElementById("ldgNetCard");
+  if (netCard) {
+    netCard.classList.toggle("profit", d.net >= 0);
+    netCard.classList.toggle("loss",   d.net < 0);
+  }
+
+  // Aylık özet
+  const mb = document.getElementById("ldgMonthlyBody");
+  if (mb) {
+    mb.innerHTML = d.monthly.map(m => `
+      <tr>
+        <td>${m.month}</td>
+        <td class="num" style="color:#16a34a">${fmt(m.income)}</td>
+        <td class="num" style="color:#dc2626">${fmt(m.expense)}</td>
+        <td class="num" style="font-weight:700;color:${m.net>=0?'#16a34a':'#dc2626'}">${fmt(m.net)}</td>
+        <td class="num">${m.count}</td>
+      </tr>`).join("");
+    document.getElementById("ldgFtIncome").textContent  = fmt(d.total_income);
+    document.getElementById("ldgFtExpense").textContent = fmt(d.total_expense);
+    document.getElementById("ldgFtNet").textContent     = fmt(d.net);
+    document.getElementById("ldgFtCount").textContent   = d.count;
+  }
+
+  // Fatura listesi
+  const lb = document.getElementById("ldgBody");
+  if (lb) {
+    lb.innerHTML = d.invoices.map(inv => {
+      const isIncome = inv.invoice_type === "income";
+      return `<tr class="${isIncome ? 'row-income' : 'row-expense'}">
+        <td><span class="${isIncome ? 'badge-income' : 'badge-expense'}">${isIncome ? 'GELİR' : 'GİDER'}</span></td>
+        <td>${formatDate(inv.date) || "—"}</td>
+        <td>${esc(inv.vendor) || "—"}</td>
+        <td class="num">${inv.total !== null ? fmt(inv.total) : "—"}</td>
+        <td class="num">${inv.vat_amount !== null ? fmt(inv.vat_amount) : "—"}</td>
+        <td>${esc(inv.category) || "—"}</td>
+        <td>${esc(inv.payment_method) || "—"}</td>
+      </tr>`;
+    }).join("");
+  }
+
+  // Sayfa bilgisi
+  const pi = document.getElementById("ldgPageInfo");
+  if (pi) pi.textContent = `Sayfa ${d.page}/${d.pages} — ${d.count} kayıt`;
+
+  // Pagination
+  const pg = document.getElementById("ldgPagination");
+  if (pg) {
+    let html = "";
+    if (_ldgPage > 1)       html += `<button class="btn btn-ghost btn-sm" onclick="ldgGoPage(${_ldgPage-1})">← Önceki</button>`;
+    if (_ldgPage < d.pages) html += `<button class="btn btn-ghost btn-sm" onclick="ldgGoPage(${_ldgPage+1})">Sonraki →</button>`;
+    pg.innerHTML = html;
+  }
+}
+
+window.ldgGoPage = (p) => { _ldgPage = p; loadLedger(); };

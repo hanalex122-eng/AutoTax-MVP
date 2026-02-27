@@ -32,7 +32,8 @@ CREATE TABLE IF NOT EXISTS invoices (
     qr_parsed      TEXT,
     raw_text       TEXT,
     needs_review   INTEGER DEFAULT 0,
-    review_reason  TEXT
+    review_reason  TEXT,
+    invoice_type   TEXT DEFAULT 'expense'
 );
 CREATE INDEX IF NOT EXISTS idx_date     ON invoices(date);
 CREATE INDEX IF NOT EXISTS idx_vendor   ON invoices(vendor COLLATE NOCASE);
@@ -40,6 +41,12 @@ CREATE INDEX IF NOT EXISTS idx_category ON invoices(category);
 CREATE INDEX IF NOT EXISTS idx_total    ON invoices(total);
 CREATE INDEX IF NOT EXISTS idx_payment  ON invoices(payment_method);
 CREATE INDEX IF NOT EXISTS idx_ts       ON invoices(timestamp DESC);
+CREATE INDEX IF NOT EXISTS idx_type     ON invoices(invoice_type);
+"""
+
+_MIGRATE_DDL = """
+ALTER TABLE invoices ADD COLUMN invoice_type TEXT DEFAULT 'expense';
+CREATE INDEX IF NOT EXISTS idx_type ON invoices(invoice_type);
 """
 
 
@@ -55,6 +62,16 @@ def _conn() -> sqlite3.Connection:
 def _init():
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     with _conn() as c:
+        # Önce migration — mevcut DB'ye kolon ekle
+        cols = [r[1] for r in c.execute("PRAGMA table_info(invoices)").fetchall()]
+        if cols and "invoice_type" not in cols:
+            try:
+                c.execute("ALTER TABLE invoices ADD COLUMN invoice_type TEXT DEFAULT 'expense'")
+                c.execute("CREATE INDEX IF NOT EXISTS idx_type ON invoices(invoice_type)")
+                c.commit()
+            except Exception as e:
+                print(f"[AutoTax] invoice_type migration: {e}")
+        # Sonra DDL (yeni tablo için)
         c.executescript(_DDL)
     _migrate_json()
 
@@ -107,6 +124,7 @@ def _record_to_row(inv_id, filename, timestamp, d):
         (d.get("raw_text") or "")[:5000],
         1 if d.get("needs_review") else 0,
         d.get("review_reason"),
+        d.get("invoice_type", "expense"),
     )
 
 
@@ -131,6 +149,7 @@ def _row_to_dict(row) -> dict:
         "timestamp": row["timestamp"],
         "filename":  row["filename"],
         "needs_review": bool(row["needs_review"]),
+        "invoice_type": row["invoice_type"] if "invoice_type" in row.keys() else "expense",
         "data": {
             "vendor":          row["vendor"],
             "date":            row["date"],
@@ -155,7 +174,7 @@ def add_invoice(record: dict, filename: str) -> str:
     with _LOCK:
         with _conn() as c:
             c.execute(
-                "INSERT INTO invoices VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                "INSERT INTO invoices VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 row,
             )
     return inv_id

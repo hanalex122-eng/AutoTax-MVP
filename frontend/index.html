@@ -91,6 +91,10 @@
         <line x1="6" y1="20" x2="6" y2="14"/></svg>
       İstatistik
     </li>
+    <li data-view="ledger">
+      <svg viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+      Muhasebe Defteri
+    </li>
   </ul>
   <div class="sidebar-bottom">
     <button id="themeToggle" class="btn-icon" title="Tema Değiştir">
@@ -472,5 +476,101 @@
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="app.js" type="module"></script>
+
+<!-- ── Muhasebe Defteri View ── -->
+<section id="view-ledger" class="view" style="display:none">
+  <div class="view-header">
+    <h1>Muhasebe Defteri</h1>
+    <div class="page-actions">
+      <a id="ldgExcel" href="/api/stats/export/ledger-excel" class="btn btn-success" download>Excel İndir</a>
+    </div>
+  </div>
+
+  <!-- Filtreler -->
+  <div class="filter-bar">
+    <input type="date" id="ldgStart" class="input" placeholder="Başlangıç">
+    <input type="date" id="ldgEnd"   class="input" placeholder="Bitiş">
+    <input type="text" id="ldgVendor" class="input" placeholder="Firma adı...">
+    <button id="ldgFilter" class="btn btn-primary">Filtrele</button>
+    <button id="ldgReset"  class="btn btn-ghost">Temizle</button>
+  </div>
+
+  <!-- KPI Kartlar -->
+  <div class="kpi-grid" id="ldgKpi">
+    <div class="kpi-card kpi-income">
+      <span class="kpi-label">Toplam Gelir</span>
+      <span class="kpi-value" id="ldgIncome">—</span>
+      <span class="kpi-sub" id="ldgIncomeCount">0 fatura</span>
+    </div>
+    <div class="kpi-card kpi-expense">
+      <span class="kpi-label">Toplam Gider</span>
+      <span class="kpi-value" id="ldgExpense">—</span>
+      <span class="kpi-sub" id="ldgExpenseCount">0 fatura</span>
+    </div>
+    <div class="kpi-card kpi-net" id="ldgNetCard">
+      <span class="kpi-label">NET Bakiye</span>
+      <span class="kpi-value" id="ldgNet">—</span>
+      <span class="kpi-sub" id="ldgNetLabel">—</span>
+    </div>
+    <div class="kpi-card">
+      <span class="kpi-label">KDV (Alınan)</span>
+      <span class="kpi-value" id="ldgVatIncome">—</span>
+      <span class="kpi-sub" id="ldgVatExpense">Ödenen: —</span>
+    </div>
+  </div>
+
+  <!-- Aylık Özet Tablosu -->
+  <div class="table-card">
+    <h3>Aylık Özet</h3>
+    <div class="table-wrap">
+      <table class="inv-table" id="ldgMonthlyTable">
+        <thead>
+          <tr>
+            <th>Ay</th>
+            <th>Gelir</th>
+            <th>Gider</th>
+            <th>NET</th>
+            <th>Fatura</th>
+          </tr>
+        </thead>
+        <tbody id="ldgMonthlyBody"></tbody>
+        <tfoot>
+          <tr id="ldgMonthlyFoot" class="table-footer-total">
+            <td><b>TOPLAM</b></td>
+            <td id="ldgFtIncome">—</td>
+            <td id="ldgFtExpense">—</td>
+            <td id="ldgFtNet">—</td>
+            <td id="ldgFtCount">—</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  </div>
+
+  <!-- Fatura Listesi -->
+  <div class="table-card">
+    <h3>Fatura Listesi
+      <span class="badge-count" id="ldgPageInfo" style="display:inline;margin-left:8px;font-size:12px"></span>
+    </h3>
+    <div class="table-wrap">
+      <table class="inv-table" id="ldgTable">
+        <thead>
+          <tr>
+            <th>Tür</th>
+            <th>Tarih</th>
+            <th>Firma</th>
+            <th>Tutar</th>
+            <th>KDV</th>
+            <th>Kategori</th>
+            <th>Ödeme</th>
+          </tr>
+        </thead>
+        <tbody id="ldgBody"></tbody>
+      </table>
+    </div>
+    <div class="pagination" id="ldgPagination"></div>
+  </div>
+</section>
+
 </body>
 </html>

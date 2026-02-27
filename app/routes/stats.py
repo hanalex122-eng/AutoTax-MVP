@@ -379,3 +379,221 @@ def export_review_queue_csv():
             "X-Content-Type-Options": "nosniff",
         },
     )
+
+
+# ─── GET /stats/ledger  (Muhasebe Defteri) ─────────────────────────────────
+@router.get("/ledger")
+def ledger(
+    start:  Optional[str] = Query(None),
+    end:    Optional[str] = Query(None),
+    vendor: Optional[str] = Query(None),
+    page:   int = Query(1,  ge=1),
+    per_page: int = Query(50, ge=1, le=500),
+):
+    """Gelir + Gider muhasebe defteri. NET bakiyeyi de hesaplar."""
+    import sqlite3
+    from app.services.invoice_db import DB_PATH
+
+    conditions = []
+    params: list = []
+
+    if start:
+        conditions.append("date >= ?"); params.append(start)
+    if end:
+        conditions.append("date <= ?"); params.append(end)
+    if vendor:
+        conditions.append("vendor LIKE ?"); params.append(f"%{vendor}%")
+
+    where = ("WHERE " + " AND ".join(conditions)) if conditions else ""
+
+    with sqlite3.connect(str(DB_PATH)) as con:
+        con.row_factory = sqlite3.Row
+
+        # Toplam sayı
+        total = con.execute(
+            f"SELECT COUNT(*) FROM invoices {where}", params
+        ).fetchone()[0]
+
+        # Gelir / Gider özeti
+        agg = con.execute(f"""
+            SELECT
+                COALESCE(SUM(CASE WHEN invoice_type='income'  THEN total ELSE 0 END), 0) AS total_income,
+                COALESCE(SUM(CASE WHEN invoice_type='expense' THEN total ELSE 0 END), 0) AS total_expense,
+                COALESCE(SUM(CASE WHEN invoice_type='income'  THEN vat_amount ELSE 0 END), 0) AS vat_income,
+                COALESCE(SUM(CASE WHEN invoice_type='expense' THEN vat_amount ELSE 0 END), 0) AS vat_expense,
+                COUNT(CASE WHEN invoice_type='income'  THEN 1 END) AS count_income,
+                COUNT(CASE WHEN invoice_type='expense' THEN 1 END) AS count_expense
+            FROM invoices {where}
+        """, params).fetchone()
+
+        # Aylık özet
+        monthly = con.execute(f"""
+            SELECT
+                SUBSTR(date,1,7) AS month,
+                COALESCE(SUM(CASE WHEN invoice_type='income'  THEN total ELSE 0 END),0) AS income,
+                COALESCE(SUM(CASE WHEN invoice_type='expense' THEN total ELSE 0 END),0) AS expense,
+                COUNT(*) AS count
+            FROM invoices {where}
+            GROUP BY SUBSTR(date,1,7)
+            ORDER BY month DESC
+        """, params).fetchall()
+
+        # Sayfalı fatura listesi
+        offset = (page - 1) * per_page
+        rows = con.execute(
+            f"""SELECT id, filename, vendor, date, time, total, vat_amount,
+                       invoice_number, category, payment_method, invoice_type,
+                       needs_review, timestamp
+                FROM invoices {where}
+                ORDER BY date DESC, timestamp DESC
+                LIMIT ? OFFSET ?""",
+            params + [per_page, offset]
+        ).fetchall()
+
+    total_income  = round(float(agg["total_income"]),  2)
+    total_expense = round(float(agg["total_expense"]), 2)
+    net           = round(total_income - total_expense, 2)
+
+    return {
+        "count":         total,
+        "page":          page,
+        "per_page":      per_page,
+        "pages":         max(1, -(-total // per_page)),
+        "total_income":  total_income,
+        "total_expense": total_expense,
+        "vat_income":    round(float(agg["vat_income"]),  2),
+        "vat_expense":   round(float(agg["vat_expense"]), 2),
+        "count_income":  agg["count_income"],
+        "count_expense": agg["count_expense"],
+        "net":           net,
+        "net_label":     "KAR" if net >= 0 else "ZARAR",
+        "monthly": [
+            {
+                "month":   r["month"],
+                "income":  round(float(r["income"]),  2),
+                "expense": round(float(r["expense"]), 2),
+                "net":     round(float(r["income"]) - float(r["expense"]), 2),
+                "count":   r["count"],
+            }
+            for r in monthly
+        ],
+        "invoices": [
+            {
+                "id":             r["id"],
+                "vendor":         r["vendor"] or "",
+                "date":           r["date"] or "",
+                "time":           r["time"] or "",
+                "total":          r["total"],
+                "vat_amount":     r["vat_amount"],
+                "invoice_number": r["invoice_number"] or "",
+                "category":       r["category"] or "",
+                "payment_method": r["payment_method"] or "",
+                "invoice_type":   r["invoice_type"] or "expense",
+                "needs_review":   bool(r["needs_review"]),
+                "filename":       r["filename"] or "",
+            }
+            for r in rows
+        ],
+    }
+
+
+# ─── GET /stats/export/ledger-excel  (Muhasebe defteri Excel) ───────────────
+@router.get("/export/ledger-excel")
+def export_ledger_excel(
+    start:  Optional[str] = Query(None),
+    end:    Optional[str] = Query(None),
+    vendor: Optional[str] = Query(None),
+):
+    """Tüm gelir+gider faturalarını muhasebe formatında Excel'e aktar."""
+    try:
+        import openpyxl
+        from openpyxl.styles import PatternFill, Font, Alignment
+    except ImportError:
+        from fastapi.responses import JSONResponse
+        return JSONResponse({"error": "openpyxl kurulu değil"}, status_code=500)
+
+    from datetime import date as _date
+    today = _date.today().isoformat()
+
+    data = ledger(start=start, end=end, vendor=vendor, page=1, per_page=1)
+
+    wb = openpyxl.Workbook(write_only=True)
+    ws = wb.create_sheet("Muhasebe Defteri")
+
+    # Özet satırları
+    green  = PatternFill("solid", fgColor="16A34A")
+    red    = PatternFill("solid", fgColor="DC2626")
+    blue   = PatternFill("solid", fgColor="1D4ED8")
+    white  = Font(color="FFFFFF", bold=True, size=12)
+
+    def _cell(ws, val, fill=None, font=None):
+        cell = openpyxl.cell.WriteOnlyCell(ws, value=val)
+        if fill: cell.fill = fill
+        if font: cell.font = font
+        return cell
+
+    ws.append([_cell(ws, "MUHASEBE DEFTERİ", blue, white)])
+    ws.append([_cell(ws, f"Rapor tarihi: {today}")])
+    ws.append([])
+    ws.append([
+        _cell(ws, f"Toplam Gelir: {data['total_income']}", green, Font(color="FFFFFF", bold=True)),
+        _cell(ws, f"Toplam Gider: {data['total_expense']}", red,   Font(color="FFFFFF", bold=True)),
+        _cell(ws, f"NET {data['net_label']}: {data['net']}",
+              PatternFill("solid", fgColor="16A34A" if data["net"] >= 0 else "DC2626"),
+              Font(color="FFFFFF", bold=True)),
+    ])
+    ws.append([])
+
+    # Aylık özet
+    ws.append([_cell(ws, "AYLIK ÖZET", blue, white)])
+    ws.append(["Ay", "Gelir", "Gider", "NET", "Fatura Sayısı"])
+    for m in data["monthly"]:
+        ws.append([m["month"], m["income"], m["expense"], m["net"], m["count"]])
+    ws.append([])
+
+    # Fatura listesi başlığı
+    ws.append([_cell(ws, "FATURA LİSTESİ", blue, white)])
+    hdr_fill = PatternFill("solid", fgColor="374151")
+    hdr_font = Font(color="FFFFFF", bold=True)
+    ws.append([
+        _cell(ws, h, hdr_fill, hdr_font)
+        for h in ["Tür", "Tarih", "Firma", "Tutar", "KDV", "Kategori", "Ödeme", "Fatura No"]
+    ])
+
+    # Tüm sayfalarda fatura yaz
+    import sqlite3
+    from app.services.invoice_db import DB_PATH
+    conditions, params = [], []
+    if start:  conditions.append("date >= ?"); params.append(start)
+    if end:    conditions.append("date <= ?"); params.append(end)
+    if vendor: conditions.append("vendor LIKE ?"); params.append(f"%{vendor}%")
+    where = ("WHERE " + " AND ".join(conditions)) if conditions else ""
+
+    with sqlite3.connect(str(DB_PATH)) as con:
+        con.row_factory = sqlite3.Row
+        rows = con.execute(
+            f"SELECT * FROM invoices {where} ORDER BY date DESC", params
+        ).fetchall()
+
+    for r in rows:
+        typ  = "GELİR" if r["invoice_type"] == "income" else "GİDER"
+        fill = PatternFill("solid", fgColor="DCFCE7") if r["invoice_type"] == "income" else PatternFill("solid", fgColor="FEE2E2")
+        ws.append([
+            _cell(ws, typ,                     fill),
+            _cell(ws, r["date"] or "",         fill),
+            _cell(ws, r["vendor"] or "",       fill),
+            _cell(ws, r["total"],              fill),
+            _cell(ws, r["vat_amount"],         fill),
+            _cell(ws, r["category"] or "",     fill),
+            _cell(ws, r["payment_method"] or "", fill),
+            _cell(ws, r["invoice_number"] or "", fill),
+        ])
+
+    buf = io.BytesIO()
+    wb.save(buf); buf.seek(0)
+    fname = f"autotax_muhasebe_{today}.xlsx"
+    return StreamingResponse(
+        buf,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f'attachment; filename="{fname}"'},
+    )

@@ -654,3 +654,20 @@ tr.row-review:hover td    { background: #fef3c7 !important; }
 }
 .btn-warning:hover { background: #d97706; }
 .btn-sm { height: 30px; padding: 0 10px; font-size: 12px; }
+
+/* ── Muhasebe Defteri KPI kartlar ───────────────────────── */
+.kpi-income { border-left: 4px solid #16a34a; }
+.kpi-expense { border-left: 4px solid #dc2626; }
+.kpi-net    { border-left: 4px solid #1d4ed8; }
+.kpi-income .kpi-value { color: #16a34a; }
+.kpi-expense .kpi-value { color: #dc2626; }
+.kpi-net .kpi-value { color: #1d4ed8; }
+.kpi-net.profit .kpi-value { color: #16a34a; }
+.kpi-net.loss   .kpi-value { color: #dc2626; }
+
+/* Gelir/Gider satır renkleri */
+tr.row-income  td { background: rgba(22,163,74,.06); }
+tr.row-expense td { background: rgba(220,38,38,.06); }
+.badge-income  { background: #dcfce7; color: #16a34a; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 700; }
+.badge-expense { background: #fee2e2; color: #dc2626; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 700; }
+
