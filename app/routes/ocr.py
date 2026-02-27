@@ -74,7 +74,8 @@ def _plan_allows_qr(user) -> bool:
     return PLANS.get(plan, PLANS["free"]).get("qr", False)
 
 
-async def _process(f: UploadFile, qr_allowed: bool = True) -> InvoiceResult:
+async def _process(f: UploadFile, qr_allowed: bool = True,
+                   user_id: str = None) -> InvoiceResult:
     filename = _sanitize_filename(f.filename or "upload")
 
     # Uzantı kontrolü
@@ -112,7 +113,7 @@ async def _process(f: UploadFile, qr_allowed: bool = True) -> InvoiceResult:
 
     needs_review  = not parsed.get("total")
     review_reason = "Toplam tutar bulunamadı" if needs_review else None
-    inv_id        = add_invoice(parsed, filename)
+    inv_id        = add_invoice(parsed, filename, user_id)
 
     return InvoiceResult(
         invoice_id     = inv_id,
@@ -147,7 +148,8 @@ async def upload(request: Request, file: UploadFile = File(...)):
                 detail=f"Aylık fatura limitinize ulaştınız ({used}/{limit}). "
                        f"{plan_label} planınızı yükseltin."
             )
-    result = await _process(file, qr_allowed=_plan_allows_qr(user))
+    result = await _process(file, qr_allowed=_plan_allows_qr(user),
+                            user_id=user["id"] if user else None)
     if user:
         increment_usage(user["id"])
         # Kota %80 veya %95 dolunca uyarı e-postası gönder
@@ -166,11 +168,13 @@ async def upload(request: Request, file: UploadFile = File(...)):
                     )
 
     # Duplikasyon + tekrarlayan fatura kontrolü
+    uid = user["id"] if user else None
     dup = find_duplicate(
         vendor         = result.vendor,
         date           = result.date,
         total          = result.total,
         invoice_number = result.invoice_number,
+        user_id        = uid,
     )
     result_dict = result.model_dump()
 
@@ -196,7 +200,7 @@ async def upload(request: Request, file: UploadFile = File(...)):
 
     # Tekrarlayan fatura analizi (3 ay ardışık gelmişse bildir)
     if result.vendor:
-        recurring = find_recurring(result.vendor, months=3)
+        recurring = find_recurring(result.vendor, months=3, user_id=uid)
         if len(recurring) >= 3:
             months_found = [r["month"] for r in recurring]
             result_dict["recurring_info"] = {
@@ -230,9 +234,10 @@ async def upload_multi(request: Request, files: List[UploadFile] = File(...)):
     results = []
     errors  = []
     qr_ok   = _plan_allows_qr(user)
+    uid     = user["id"] if user else None
     for f in files:
         try:
-            r = await _process(f, qr_allowed=qr_ok)
+            r = await _process(f, qr_allowed=qr_ok, user_id=uid)
             if user:
                 increment_usage(user["id"])
             results.append(r)

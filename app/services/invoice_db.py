@@ -33,7 +33,8 @@ CREATE TABLE IF NOT EXISTS invoices (
     raw_text       TEXT,
     needs_review   INTEGER DEFAULT 0,
     review_reason  TEXT,
-    invoice_type   TEXT DEFAULT 'expense'
+    invoice_type   TEXT DEFAULT 'expense',
+    user_id        TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_date     ON invoices(date);
 CREATE INDEX IF NOT EXISTS idx_vendor   ON invoices(vendor COLLATE NOCASE);
@@ -42,6 +43,7 @@ CREATE INDEX IF NOT EXISTS idx_total    ON invoices(total);
 CREATE INDEX IF NOT EXISTS idx_payment  ON invoices(payment_method);
 CREATE INDEX IF NOT EXISTS idx_ts       ON invoices(timestamp DESC);
 CREATE INDEX IF NOT EXISTS idx_type     ON invoices(invoice_type);
+CREATE INDEX IF NOT EXISTS idx_uid      ON invoices(user_id);
 """
 
 _MIGRATE_DDL = """
@@ -71,6 +73,13 @@ def _init():
                 c.commit()
             except Exception as e:
                 print(f"[AutoTax] invoice_type migration: {e}")
+        if cols and "user_id" not in cols:
+            try:
+                c.execute("ALTER TABLE invoices ADD COLUMN user_id TEXT")
+                c.execute("CREATE INDEX IF NOT EXISTS idx_uid ON invoices(user_id)")
+                c.commit()
+            except Exception as e:
+                print(f"[AutoTax] user_id migration: {e}")
         # Sonra DDL (yeni tablo için)
         c.executescript(_DDL)
     _migrate_json()
@@ -113,7 +122,7 @@ def _migrate_json():
         print(f"[AutoTax] Migrasyon hatası: {e}")
 
 
-def _record_to_row(inv_id, filename, timestamp, d):
+def _record_to_row(inv_id, filename, timestamp, d, user_id=None):
     return (
         inv_id, filename, timestamp,
         d.get("vendor"),  d.get("date"),   d.get("time"),
@@ -125,6 +134,7 @@ def _record_to_row(inv_id, filename, timestamp, d):
         1 if d.get("needs_review") else 0,
         d.get("review_reason"),
         d.get("invoice_type", "expense"),
+        user_id,
     )
 
 
@@ -168,33 +178,36 @@ def _row_to_dict(row) -> dict:
 
 
 # ── YAZMA ─────────────────────────────────────────────────
-def add_invoice(record: dict, filename: str) -> str:
+def add_invoice(record: dict, filename: str, user_id: str = None) -> str:
     inv_id = str(uuid.uuid4())
-    row    = _record_to_row(inv_id, filename, datetime.now().isoformat(), record)
+    row    = _record_to_row(inv_id, filename, datetime.now().isoformat(), record, user_id)
     with _LOCK:
         with _conn() as c:
             c.execute(
-                "INSERT INTO invoices VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                "INSERT INTO invoices VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 row,
             )
     return inv_id
 
 
 def find_duplicate(vendor: str, date: str, total: float,
-                   invoice_number: str = None) -> dict | None:
+                   invoice_number: str = None,
+                   user_id: str = None) -> dict | None:
     """
     Yeni fatura ile aynı (vendor + date + total) veya (invoice_number) olan
-    mevcut kaydı döndürür. Bulamazsa None.
+    mevcut kaydı döndürür. Kullanıcıya özgü arama (user_id zorunlu).
     """
     if not vendor and not invoice_number:
         return None
+    uid_clause = "AND user_id=?" if user_id else ""
+    uid_param  = [user_id] if user_id else []
     with _conn() as c:
         # invoice_number ile tam eşleşme (en güvenilir)
         if invoice_number:
             row = c.execute(
-                "SELECT id,vendor,date,total,timestamp FROM invoices "
-                "WHERE invoice_number=? AND LOWER(vendor)=LOWER(?) LIMIT 1",
-                (invoice_number, vendor or "")
+                f"SELECT id,vendor,date,total,timestamp FROM invoices "
+                f"WHERE invoice_number=? AND LOWER(vendor)=LOWER(?) {uid_clause} LIMIT 1",
+                [invoice_number, vendor or ""] + uid_param
             ).fetchone()
             if row:
                 return dict(row)
@@ -202,26 +215,29 @@ def find_duplicate(vendor: str, date: str, total: float,
         if vendor and date and total:
             tol = abs(total) * 0.02 or 0.01
             row = c.execute(
-                "SELECT id,vendor,date,total,timestamp FROM invoices "
-                "WHERE LOWER(vendor)=LOWER(?) AND date=? "
-                "AND ABS(total - ?) <= ? LIMIT 1",
-                (vendor, date, total, tol)
+                f"SELECT id,vendor,date,total,timestamp FROM invoices "
+                f"WHERE LOWER(vendor)=LOWER(?) AND date=? "
+                f"AND ABS(total - ?) <= ? {uid_clause} LIMIT 1",
+                [vendor, date, total, tol] + uid_param
             ).fetchone()
             if row:
                 return dict(row)
     return None
 
 
-def find_recurring(vendor: str, months: int = 3) -> list[dict]:
+def find_recurring(vendor: str, months: int = 3,
+                   user_id: str = None) -> list[dict]:
     """
     Aynı firmadan son N ayda düzenli fatura var mı kontrol et.
-    Her ay en az 1 fatura bulunursa 'tekrarlayan' sayar.
+    user_id verilirse sadece o kullanıcının faturaları sorgulanır.
     """
     if not vendor:
         return []
+    uid_clause = "AND user_id=?" if user_id else ""
+    uid_param  = [user_id] if user_id else []
     with _conn() as c:
         rows = c.execute(
-            """
+            f"""
             SELECT strftime('%Y-%m', date) as month,
                    COUNT(*) as cnt,
                    AVG(total) as avg_total,
@@ -230,14 +246,13 @@ def find_recurring(vendor: str, months: int = 3) -> list[dict]:
             FROM invoices
             WHERE LOWER(vendor)=LOWER(?)
               AND date >= date('now', ?)
+              {uid_clause}
             GROUP BY month
             ORDER BY month DESC
             """,
-            (vendor, f"-{months} months")
+            [vendor, f"-{months} months"] + uid_param
         ).fetchall()
-    result = [dict(r) for r in rows]
-    # Kaç ay ardışık gelmiş?
-    return result
+    return [dict(r) for r in rows]
 
 
 def update_invoice(inv_id: str, fields: dict) -> bool:
@@ -432,5 +447,87 @@ def safe_float(inv: dict, field: str) -> float:
     except (TypeError, ValueError): return 0.0
 
 
+# ── MUHASEBECI PAYLAŞIM YARDIMCILARI ─────────────────────
+def get_invoices_page(
+    page: int = 1, per_page: int = 50,
+    user_id: str = None,
+    date_from: str = None, date_to: str = None,
+    vendor: str = None,
+) -> dict:
+    """Sayfalı fatura listesi — share.py ve diğerleri için."""
+    where, params = [], []
+    if user_id:
+        where.append("user_id=?"); params.append(user_id)
+    if date_from:
+        where.append("date >= ?"); params.append(date_from)
+    if date_to:
+        where.append("date <= ?"); params.append(date_to)
+    if vendor:
+        where.append("vendor LIKE ?"); params.append(f"%{vendor}%")
+    w = ("WHERE " + " AND ".join(where)) if where else ""
+
+    with _conn() as c:
+        total_cnt = c.execute(
+            f"SELECT COUNT(*) FROM invoices {w}", params
+        ).fetchone()[0]
+        pages  = max(1, (total_cnt + per_page - 1) // per_page)
+        page   = max(1, min(page, pages))
+        offset = (page - 1) * per_page
+        rows   = c.execute(
+            f"SELECT * FROM invoices {w} ORDER BY timestamp DESC LIMIT ? OFFSET ?",
+            params + [per_page, offset],
+        ).fetchall()
+    return {
+        "count":    total_cnt,
+        "page":     page,
+        "pages":    pages,
+        "per_page": per_page,
+        "invoices": [_row_to_dict(r) for r in rows],
+    }
+
+
+def get_ledger(
+    user_id: str = None,
+    date_from: str = None, date_to: str = None,
+) -> dict:
+    """Gelir/gider özeti — muhasebe defteri."""
+    where, params = [], []
+    if user_id:
+        where.append("user_id=?"); params.append(user_id)
+    if date_from:
+        where.append("date >= ?"); params.append(date_from)
+    if date_to:
+        where.append("date <= ?"); params.append(date_to)
+    w = ("WHERE " + " AND ".join(where)) if where else ""
+
+    with _conn() as c:
+        rows = c.execute(
+            f"SELECT invoice_type, COUNT(*) as cnt, "
+            f"COALESCE(SUM(total),0) as total_sum, "
+            f"COALESCE(SUM(vat_amount),0) as vat_sum "
+            f"FROM invoices {w} GROUP BY invoice_type",
+            params
+        ).fetchall()
+
+    summary = {"income": {"count": 0, "total": 0.0, "vat": 0.0},
+               "expense": {"count": 0, "total": 0.0, "vat": 0.0}}
+    for r in rows:
+        t = r["invoice_type"] or "expense"
+        if t not in summary:
+            summary[t] = {"count": 0, "total": 0.0, "vat": 0.0}
+        summary[t]["count"] += r["cnt"]
+        summary[t]["total"] += round(r["total_sum"], 2)
+        summary[t]["vat"]   += round(r["vat_sum"],   2)
+
+    income  = summary.get("income",  {}).get("total", 0)
+    expense = summary.get("expense", {}).get("total", 0)
+    return {
+        "income":  summary.get("income",  {"count": 0, "total": 0.0, "vat": 0.0}),
+        "expense": summary.get("expense", {"count": 0, "total": 0.0, "vat": 0.0}),
+        "net":     round(income - expense, 2),
+    }
+
+
 # Başlatma
 _init()
+

@@ -8,6 +8,9 @@ from pathlib  import Path
 from threading import Lock
 from datetime  import datetime
 from app.services.user_db import _DB_PATH, _LOCK
+from app.config import settings
+
+_INV_DB = Path(settings.SQLITE_PATH)
 
 
 def _conn():
@@ -84,28 +87,32 @@ def get_budget_status(user_id: str, month: str = None) -> list[dict]:
     if not budgets:
         return []
 
-    # Fatura DB'den kategori harcamalarını çek
-    inv_db = Path("storage/invoices.db")
-    result = []
-    with sqlite3.connect(str(inv_db), check_same_thread=False) as ic:
+    # Tek sorguyla tüm kategorilerin harcamalarını çek (N+1 önlenir)
+    # Yalnızca bu kullanıcının faturaları sorgulanır (IDOR önlenir)
+    with sqlite3.connect(str(_INV_DB), check_same_thread=False) as ic:
         ic.row_factory = sqlite3.Row
-        for b in budgets:
-            cat   = b["category"]
-            limit = b["amount"]
-            row   = ic.execute(
-                "SELECT COALESCE(SUM(total),0) as spent FROM invoices "
-                "WHERE LOWER(category)=LOWER(?) AND strftime('%Y-%m',date)=?",
-                (cat, month)
-            ).fetchone()
-            spent = float(row["spent"]) if row else 0.0
-            pct   = round(spent / limit * 100, 1) if limit else 0
-            result.append({
-                "category": cat,
-                "budget":   limit,
-                "spent":    round(spent, 2),
-                "remaining": round(limit - spent, 2),
-                "pct":      pct,
-                "status":   "over" if pct >= 100 else "warn" if pct >= 80 else "ok",
-                "month":    month,
-            })
+        rows = ic.execute(
+            "SELECT LOWER(category) as cat, COALESCE(SUM(total),0) as spent "
+            "FROM invoices "
+            "WHERE user_id=? AND strftime('%Y-%m',date)=? "
+            "GROUP BY LOWER(category)",
+            (user_id, month)
+        ).fetchall()
+    spent_map = {r["cat"]: float(r["spent"]) for r in rows}
+
+    result = []
+    for b in budgets:
+        cat   = b["category"].lower()
+        limit = b["amount"]
+        spent = spent_map.get(cat, 0.0)
+        pct   = round(spent / limit * 100, 1) if limit else 0
+        result.append({
+            "category":  b["category"],
+            "budget":    limit,
+            "spent":     round(spent, 2),
+            "remaining": round(limit - spent, 2),
+            "pct":       pct,
+            "status":    "over" if pct >= 100 else "warn" if pct >= 80 else "ok",
+            "month":     month,
+        })
     return result
