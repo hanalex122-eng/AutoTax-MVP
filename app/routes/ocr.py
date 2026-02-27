@@ -65,7 +65,15 @@ def _sanitize_qr_override(qr: dict) -> dict:
     return safe
 
 
-async def _process(f: UploadFile) -> InvoiceResult:
+def _plan_allows_qr(user) -> bool:
+    """Kullanıcının planı QR okumaya izin veriyor mu?"""
+    if not user:
+        return False
+    plan = user.get("plan", "free")
+    return PLANS.get(plan, PLANS["free"]).get("qr", False)
+
+
+async def _process(f: UploadFile, qr_allowed: bool = True) -> InvoiceResult:
     filename = _sanitize_filename(f.filename or "upload")
 
     # Uzantı kontrolü
@@ -86,8 +94,8 @@ async def _process(f: UploadFile) -> InvoiceResult:
     # Ham PNG (QR için — enhancement YOK)
     raw_png  = await run_in_threadpool(to_raw_png, raw, filename)
 
-    # QR / Barkod — ham görüntüden
-    qr_raw    = await run_in_threadpool(read_qr, raw_png)
+    # QR / Barkod — plan izni varsa
+    qr_raw    = await run_in_threadpool(read_qr, raw_png) if qr_allowed else None
     qr_parsed = _sanitize_qr_override(parse_qr(qr_raw)) if qr_raw else {}
 
     # Enhancement → Super Resolution → OCR
@@ -138,7 +146,7 @@ async def upload(request: Request, file: UploadFile = File(...)):
                 detail=f"Aylık fatura limitinize ulaştınız ({used}/{limit}). "
                        f"{plan_label} planınızı yükseltin."
             )
-    result = await _process(file)
+    result = await _process(file, qr_allowed=_plan_allows_qr(user))
     if user:
         increment_usage(user["id"])
     return result
@@ -164,9 +172,10 @@ async def upload_multi(request: Request, files: List[UploadFile] = File(...)):
     # Seri işle (concurrent race condition'ı önle)
     results = []
     errors  = []
+    qr_ok   = _plan_allows_qr(user)
     for f in files:
         try:
-            r = await _process(f)
+            r = await _process(f, qr_allowed=qr_ok)
             if user:
                 increment_usage(user["id"])
             results.append(r)

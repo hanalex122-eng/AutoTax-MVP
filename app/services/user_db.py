@@ -275,17 +275,32 @@ def accept_family_invite(invite_id: str, user_id: str) -> bool:
             inv = c.execute(
                 "SELECT fi.* FROM family_invites fi "
                 "JOIN users u ON LOWER(u.email)=LOWER(fi.email) "
-                "WHERE fi.id=? AND fi.status='pending' AND u.id=?",
+                "WHERE fi.id=? AND fi.status='pending' AND u.id=? "
+                "AND fi.expires_at > datetime('now')",
                 (invite_id, user_id)
             ).fetchone()
             if not inv:
                 return False
-            if inv["expires_at"] < datetime.utcnow().isoformat():
-                return False
+
+            # Aile üye limitini kontrol et
+            owner = c.execute(
+                "SELECT plan FROM users WHERE id=?", (inv["family_id"],)
+            ).fetchone()
+            owner_plan = owner["plan"] if owner else "family"
+            max_members = PLANS.get(owner_plan, PLANS["family"])["max_members"]
+            if max_members != -1:
+                current = c.execute(
+                    "SELECT COUNT(*) as cnt FROM users WHERE family_id=?",
+                    (inv["family_id"],)
+                ).fetchone()["cnt"]
+                if current >= max_members:
+                    return False
+
             c.execute("UPDATE family_invites SET status='accepted' WHERE id=?", (invite_id,))
+            # Üyeye sahibin planını da devret
             c.execute(
-                "UPDATE users SET family_id=?, role='member' WHERE id=?",
-                (inv["family_id"], user_id)
+                "UPDATE users SET family_id=?, role='member', plan=? WHERE id=?",
+                (inv["family_id"], owner_plan, user_id)
             )
     return True
 
@@ -294,7 +309,8 @@ def remove_family_member(family_id: str, member_id: str) -> bool:
     with _LOCK:
         with _conn() as c:
             c.execute(
-                "UPDATE users SET family_id=NULL, role='owner' WHERE id=? AND family_id=? AND role='member'",
+                "UPDATE users SET family_id=NULL, role='owner', plan='free' "
+                "WHERE id=? AND family_id=? AND role='member'",
                 (member_id, family_id)
             )
     return True

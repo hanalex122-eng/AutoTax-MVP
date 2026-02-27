@@ -1,12 +1,12 @@
 /* AutoTax.cloud — Service Worker v1 */
-const CACHE_NAME = "autotax-v1";
+const CACHE_NAME = "autotax-v2";
 const OFFLINE_URL = "/offline.html";
 
 const PRECACHE = [
   "/app",
   "/landing.html",
-  "/static/style.css",
-  "/static/app.js",
+  "/style.css",
+  "/app.js",
   "/static/icons/icon-192.png",
   "/static/icons/icon-512.png",
   OFFLINE_URL,
