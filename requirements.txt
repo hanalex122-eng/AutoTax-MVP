@@ -27,5 +27,5 @@ pyzbar
 # Excel export (server-side)
 openpyxl
 
-# Rate limiting
-redis
+# Rate limiting (opsiyonel - Railway'de ayrıca eklenebilir)
+# redis
