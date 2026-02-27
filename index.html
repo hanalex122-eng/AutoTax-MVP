@@ -1,76 +1,168 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
-    <meta charset="UTF-8">
-    <title>AutoTax OCR</title>
-    <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AutoTax — Fatura Yönetimi</title>
+  <link rel="stylesheet" href="style.css">
 </head>
-
 <body>
 
-    <h1>AutoTax OCR</h1>
+<div class="app-wrapper">
 
-    <!-- OCR Upload Bölümü -->
-    <div class="upload-panel">
-        <input type="file" id="fileInput">
-        <button id="uploadBtn">Gönder</button>
+  <!-- HEADER -->
+  <header class="app-header">
+    <div class="header-left">
+      <span class="logo">AutoTax</span>
+      <span class="subtitle">OCR Fatura Yönetimi</span>
     </div>
+    <div class="header-right">
+      <span id="statusDot" class="dot dot-idle"></span>
+      <span id="statusText">Hazır</span>
+    </div>
+  </header>
 
-    <pre id="result"></pre>
+  <!-- UPLOAD PANEL -->
+  <section class="panel upload-panel">
+    <div class="upload-zone" id="dropZone">
+      <input type="file" id="fileInput" multiple accept="image/*,.pdf">
+      <div class="drop-label">
+        <svg width="32" height="32" fill="none" stroke="currentColor" stroke-width="2"
+             viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        <span>Fatura veya PDF sürükle / <label for="fileInput" class="link">dosya seç</label></span>
+        <small>JPG, PNG, PDF — çoklu seçim desteklenir</small>
+      </div>
+    </div>
+    <button id="uploadBtn" class="btn btn-primary" disabled>Yükle &amp; OCR</button>
+    <div id="uploadProgress" class="progress-bar" style="display:none">
+      <div id="progressFill" class="progress-fill"></div>
+    </div>
+  </section>
 
-    <!-- Filtreleme Paneli -->
-    <div class="filter-panel">
-        <h2>Filtreleme</h2>
-
-        <label>Tarih Başlangıç:</label>
+  <!-- FILTER PANEL -->
+  <section class="panel filter-panel">
+    <div class="filter-row">
+      <div class="filter-group">
+        <label>Tarih Başlangıç</label>
         <input type="date" id="dateFrom">
-
-        <label>Tarih Bitiş:</label>
+      </div>
+      <div class="filter-group">
+        <label>Tarih Bitiş</label>
         <input type="date" id="dateTo">
-
-        <label>Firma:</label>
-        <select id="vendorSelect">
-            <option value="ALL">Tümü</option>
+      </div>
+      <div class="filter-group">
+        <label>Firma Adı</label>
+        <input type="text" id="vendorInput" placeholder="Ara…">
+      </div>
+      <div class="filter-group">
+        <label>Kategori</label>
+        <select id="categorySelect">
+          <option value="">Tümü</option>
+          <option value="food">Yemek</option>
+          <option value="grocery">Market</option>
+          <option value="transport">Ulaşım</option>
+          <option value="fuel">Akaryakıt</option>
+          <option value="hotel">Otel</option>
+          <option value="health">Sağlık</option>
+          <option value="electronics">Elektronik</option>
+          <option value="clothing">Giyim</option>
         </select>
-
-        <label>Minimum Tutar:</label>
-        <input type="number" id="minAmount" placeholder="0">
-
-        <label>Maksimum Tutar:</label>
-        <input type="number" id="maxAmount" placeholder="10000">
-
-        <button id="applyFilters">Filtrele</button>
+      </div>
+      <div class="filter-group">
+        <label>Min Tutar</label>
+        <input type="number" id="minAmount" placeholder="0" min="0">
+      </div>
+      <div class="filter-group">
+        <label>Max Tutar</label>
+        <input type="number" id="maxAmount" placeholder="∞" min="0">
+      </div>
+      <div class="filter-group filter-group-btn">
+        <button id="applyFilters" class="btn btn-secondary">Filtrele</button>
+        <button id="resetFilters" class="btn btn-ghost">Sıfırla</button>
+      </div>
     </div>
+  </section>
 
-    <!-- Fatura Tablosu -->
-<table id="invoiceTable">
-    <thead>
+  <!-- SUMMARY BAR -->
+  <div class="summary-bar">
+    <div class="summary-item">
+      <span class="s-label">Gösterilen</span>
+      <span class="s-value" id="countBadge">0</span>
+    </div>
+    <div class="summary-item">
+      <span class="s-label">Toplam Tutar</span>
+      <span class="s-value highlight" id="totalSum">0,00 €</span>
+    </div>
+    <div class="summary-item">
+      <span class="s-label">Toplam KDV</span>
+      <span class="s-value" id="vatSum">0,00 €</span>
+    </div>
+    <div class="spacer"></div>
+    <button id="exportExcel" class="btn btn-export">Excel İndir</button>
+    <button id="exportJSON" class="btn btn-export">JSON İndir</button>
+    <button id="exportAllFile" class="btn btn-export btn-export-all">Tam Rapor (JSON)</button>
+  </div>
+
+  <!-- TABLE -->
+  <div class="table-wrapper">
+    <table id="invoiceTable">
+      <thead>
         <tr>
-            <th>Firma</th>
-            <th>Tarih</th>
-            <th>Tutar</th>
-            <th>Dosya</th>
+          <th class="col-check"><input type="checkbox" id="selectAll"></th>
+          <th data-col="filename">Dosya</th>
+          <th data-col="vendor">Firma</th>
+          <th data-col="date">Tarih</th>
+          <th data-col="time">Saat</th>
+          <th data-col="total" class="num">Tutar</th>
+          <th data-col="vat_rate" class="num">KDV %</th>
+          <th data-col="vat_amount" class="num">KDV Tutarı</th>
+          <th data-col="invoice_no">Fatura No</th>
+          <th data-col="category">Kategori</th>
+          <th data-col="payment_method">Ödeme</th>
+          <th data-col="qr_raw">QR</th>
+          <th class="col-action"></th>
         </tr>
-    </thead>
-    <tbody></tbody>
-</table>
+      </thead>
+      <tbody id="tableBody">
+        <tr class="empty-row"><td colspan="13">Henüz fatura yok — dosya yükleyin.</td></tr>
+      </tbody>
+    </table>
+  </div>
 
-<!-- Toplam Kutusu -->
-<div id="totalBox" style="margin-top: 20px; font-size: 18px; font-weight: bold;">
-    Toplam: 0 €
+  <!-- VENDOR TOTALS -->
+  <div class="panel" id="vendorTotalsPanel" style="display:none">
+    <h3>Firma Bazlı Toplamlar</h3>
+    <div id="vendorTotalsGrid"></div>
+  </div>
+
+</div><!-- /app-wrapper -->
+
+<!-- DETAIL MODAL -->
+<div id="modal" class="modal-overlay" style="display:none">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h2 id="modalTitle">Fatura Detayı</h2>
+      <button id="modalClose" class="btn-close">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="detail-grid" id="detailGrid"></div>
+      <div class="detail-section">
+        <h4>QR / Barkod Verisi</h4>
+        <pre id="detailQR">—</pre>
+      </div>
+      <div class="detail-section">
+        <h4>OCR Ham Metin</h4>
+        <pre id="detailRaw">—</pre>
+      </div>
+    </div>
+  </div>
 </div>
 
-<!-- Firma Bazlı Toplamlar -->
-<div id="vendorTotals" style="margin-top: 15px; font-size: 16px;"></div>
-
-<!-- Aylık Harcama Grafiği -->
-<canvas id="monthlyChart" style="margin-top: 30px; max-width: 600px;"></canvas>
-
-<!-- Chart.js (ÖNCE yüklenir) -->
+<!-- SheetJS (Excel export) -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-<!-- script.js (EN SON yüklenir) -->
 <script type="module" src="script.js"></script>
-
 </body>
 </html>

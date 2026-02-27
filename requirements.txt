@@ -1,0 +1,31 @@
+fastapi>=0.111.0
+uvicorn[standard]>=0.29.0
+pydantic>=2.0
+pydantic[email]
+python-multipart
+python-dotenv
+
+# Auth / SaaS
+python-jose[cryptography]
+bcrypt
+httpx
+
+# OCR
+pytesseract
+Pillow
+
+# PDF
+pdf2image
+
+# Image processing
+opencv-contrib-python-headless
+numpy
+
+# QR / Barcode
+pyzbar
+
+# Excel export (server-side)
+openpyxl
+
+# Rate limiting
+redis
