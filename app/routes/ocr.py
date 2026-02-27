@@ -167,6 +167,8 @@ async def upload_multi(request: Request, files: List[UploadFile] = File(...)):
     for f in files:
         try:
             r = await _process(f)
+            if user:
+                increment_usage(user["id"])
             results.append(r)
         except HTTPException as e:
             errors.append({"filename": f.filename, "error": e.detail})

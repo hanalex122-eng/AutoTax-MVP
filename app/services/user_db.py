@@ -273,7 +273,10 @@ def accept_family_invite(invite_id: str, user_id: str) -> bool:
     with _LOCK:
         with _conn() as c:
             inv = c.execute(
-                "SELECT * FROM family_invites WHERE id=? AND status='pending'", (invite_id,)
+                "SELECT fi.* FROM family_invites fi "
+                "JOIN users u ON LOWER(u.email)=LOWER(fi.email) "
+                "WHERE fi.id=? AND fi.status='pending' AND u.id=?",
+                (invite_id, user_id)
             ).fetchone()
             if not inv:
                 return False

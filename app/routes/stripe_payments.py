@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Request, HTTPException, Depends
 from fastapi.responses import JSONResponse, RedirectResponse
 import os, json
+from app.services.user_db import PLANS as _PLANS
 
 router = APIRouter(prefix="/stripe", tags=["Stripe"])
 
@@ -14,13 +15,6 @@ PRICE_IDS = {
     "personal": os.getenv("STRIPE_PRICE_PERSONAL", "price_personal_monthly"),
     "family":   os.getenv("STRIPE_PRICE_FAMILY",   "price_family_monthly"),
     "business": os.getenv("STRIPE_PRICE_BUSINESS",  "price_business_monthly"),
-}
-
-PLAN_LIMITS = {
-    "free":     {"invoices": 50,     "languages": 3,  "members": 1},
-    "personal": {"invoices": 2000,   "languages": 8,  "members": 1},
-    "family":   {"invoices": 10000,  "languages": 8,  "members": 5},
-    "business": {"invoices": -1,     "languages": 8,  "members": -1},
 }
 
 
@@ -126,18 +120,18 @@ async def get_plan(request: Request):
 
     from app.services.user_db import get_user_by_id
     db_user = get_user_by_id(user_id)
-    plan    = db_user.get("plan", "free") if db_user else "free"
-    limits  = PLAN_LIMITS.get(plan, PLAN_LIMITS["free"])
+    plan      = db_user.get("plan", "free") if db_user else "free"
+    plan_data = _PLANS.get(plan, _PLANS["free"])
+    limits = {
+        "invoices":  plan_data["monthly_invoices"],
+        "languages": plan_data["languages"],
+        "members":   plan_data["max_members"],
+    }
 
     return {
         "plan":    plan,
         "limits":  limits,
-        "display": {
-            "free":     "Ücretsiz",
-            "personal": "Kişisel",
-            "family":   "Aile",
-            "business": "İşletme",
-        }.get(plan, plan),
+        "display": plan_data["label"],
     }
 
 
