@@ -9,7 +9,7 @@ from app.services.image_processor import to_raw_png, prepare_for_ocr
 from app.services.ocr_engine import run_ocr
 from app.services.invoice_parser import parse_invoice
 from app.services.invoice_db import (
-    add_invoice, update_invoice, get_review_queue, get_invoice
+    add_invoice, update_invoice, get_review_queue, get_invoice, find_duplicate
 )
 from app.services.qr_reader import read_qr, parse_qr
 from app.models.invoice import InvoiceResult
@@ -149,6 +149,50 @@ async def upload(request: Request, file: UploadFile = File(...)):
     result = await _process(file, qr_allowed=_plan_allows_qr(user))
     if user:
         increment_usage(user["id"])
+        # Kota %80 veya %95 dolunca uyarı e-postası gönder
+        _, used2, limit2 = check_quota(user)
+        if limit2 and limit2 > 0:
+            pct = used2 / limit2
+            if pct in (0.8, 0.95) or (0.799 < pct < 0.801) or (0.949 < pct < 0.951):
+                from app.services.email_service import send_quota_warning
+                from app.services.user_db import get_user_by_id
+                u = get_user_by_id(user["id"])
+                if u:
+                    send_quota_warning(
+                        u["email"],
+                        u.get("full_name") or u["email"].split("@")[0],
+                        used2, limit2, u.get("plan","free")
+                    )
+
+    # Duplikasyon kontrolü
+    dup = find_duplicate(
+        vendor         = result.vendor,
+        date           = result.date,
+        total          = result.total,
+        invoice_number = result.invoice_number,
+    )
+    if dup:
+        result_dict = result.model_dump()
+        result_dict["duplicate_warning"] = {
+            "existing_id":        dup["id"],
+            "existing_date":      dup.get("date"),
+            "existing_timestamp": dup.get("timestamp"),
+            "existing_total":     dup.get("total"),
+        }
+        # Kullanıcıya e-posta ile de bildir
+        if user:
+            from app.services.email_service import send_duplicate_warning
+            from app.services.user_db import get_user_by_id
+            u2 = get_user_by_id(user["id"])
+            if u2:
+                send_duplicate_warning(
+                    u2["email"],
+                    u2.get("full_name") or u2["email"].split("@")[0],
+                    result.vendor or "?",
+                    result.total  or 0,
+                    (dup.get("timestamp") or "")[:10],
+                )
+        return result_dict
     return result
 
 

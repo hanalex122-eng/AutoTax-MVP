@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="tr" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Admin Panel — AutoTax.cloud</title>
+<link rel="stylesheet" href="style.css">
+<style>
+.admin-wrap  { max-width:1100px; margin:0 auto; padding:24px 16px; }
+.admin-head  { display:flex; align-items:center; justify-content:space-between; margin-bottom:28px; flex-wrap:wrap; gap:12px; }
+.admin-head h1 { font-size:22px; font-weight:700; color:var(--primary); margin:0; }
+.stat-grid   { display:grid; grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); gap:14px; margin-bottom:28px; }
+.stat-card   { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:18px; text-align:center; }
+.stat-card .val { font-size:30px; font-weight:700; color:var(--primary); }
+.stat-card .lbl { font-size:12px; color:var(--muted); margin-top:4px; }
+.filter-row  { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:16px; }
+.filter-row input, .filter-row select { padding:8px 12px; border:1px solid var(--border); border-radius:8px; font-size:13px; background:var(--surface); color:var(--text); }
+.admin-table { width:100%; border-collapse:collapse; font-size:13px; }
+.admin-table th { background:var(--surface-2,#f8faff); padding:10px 12px; text-align:left; font-weight:600; color:var(--muted); border-bottom:1px solid var(--border); }
+.admin-table td { padding:10px 12px; border-bottom:1px solid var(--border); vertical-align:middle; }
+.admin-table tr:hover td { background:var(--surface-2,#f8faff); }
+.plan-badge  { padding:3px 10px; border-radius:99px; font-size:11px; font-weight:700; }
+.plan-free     { background:#e0f2fe; color:#0369a1; }
+.plan-personal { background:#ede9fe; color:#7c3aed; }
+.plan-family   { background:#dcfce7; color:#16a34a; }
+.plan-business { background:#fef3c7; color:#b45309; }
+.act-btns    { display:flex; gap:6px; }
+.act-btns button { padding:4px 10px; border-radius:6px; border:none; cursor:pointer; font-size:12px; font-weight:600; }
+.btn-plan  { background:#ede9fe; color:#7c3aed; }
+.btn-deact { background:#fee2e2; color:#dc2626; }
+.btn-activ { background:#dcfce7; color:#16a34a; }
+.btn-del   { background:#f1f5f9; color:#64748b; }
+.pager     { display:flex; gap:8px; align-items:center; justify-content:flex-end; margin-top:16px; }
+.pager button { padding:6px 14px; border-radius:8px; border:1px solid var(--border); background:var(--surface); cursor:pointer; font-size:13px; }
+.pager button.active { background:var(--primary); color:#fff; border-color:var(--primary); }
+.modal-back { position:fixed; inset:0; background:rgba(0,0,0,.4); display:flex; align-items:center; justify-content:center; z-index:999; }
+.modal-box  { background:var(--surface); border-radius:14px; padding:28px; width:360px; max-width:95vw; }
+.modal-box h3 { margin:0 0 18px; font-size:17px; }
+.modal-box select, .modal-box input { width:100%; padding:9px 12px; border:1px solid var(--border); border-radius:8px; margin-bottom:12px; font-size:14px; }
+.modal-box .row { display:flex; gap:10px; }
+.modal-box .row button { flex:1; padding:10px; border:none; border-radius:8px; cursor:pointer; font-weight:600; font-size:14px; }
+.btn-confirm { background:var(--primary); color:#fff; }
+.btn-cancel  { background:var(--surface-2,#f1f5f9); color:var(--text); }
+</style>
+</head>
+<body>
+<div class="admin-wrap">
+  <div class="admin-head">
+    <h1>Admin Panel</h1>
+    <div style="display:flex;gap:10px">
+      <a href="/app" class="btn btn-ghost" style="font-size:13px">← Uygulamaya Dön</a>
+      <button class="btn btn-primary" onclick="showEmailModal()" style="font-size:13px">Toplu E-posta</button>
+    </div>
+  </div>
+
+  <!-- İstatistik kartları -->
+  <div class="stat-grid" id="statGrid">
+    <div class="stat-card"><div class="val" id="sTotalUsers">…</div><div class="lbl">Toplam Kullanıcı</div></div>
+    <div class="stat-card"><div class="val" id="sActiveUsers">…</div><div class="lbl">Aktif Kullanıcı</div></div>
+    <div class="stat-card"><div class="val" id="sTotalInv">…</div><div class="lbl">Toplam Fatura</div></div>
+    <div class="stat-card"><div class="val" id="sFree">…</div><div class="lbl">Ücretsiz Plan</div></div>
+    <div class="stat-card"><div class="val" id="sPersonal">…</div><div class="lbl">Kişisel Plan</div></div>
+    <div class="stat-card"><div class="val" id="sFamily">…</div><div class="lbl">Aile Planı</div></div>
+    <div class="stat-card"><div class="val" id="sBusiness">…</div><div class="lbl">İşletme Planı</div></div>
+  </div>
+
+  <!-- Filtreler -->
+  <div class="filter-row">
+    <input id="fSearch" placeholder="E-posta veya isim ara…" oninput="loadUsers(1)">
+    <select id="fPlan" onchange="loadUsers(1)">
+      <option value="">Tüm Planlar</option>
+      <option value="free">Ücretsiz</option>
+      <option value="personal">Kişisel</option>
+      <option value="family">Aile</option>
+      <option value="business">İşletme</option>
+    </select>
+  </div>
+
+  <!-- Tablo -->
+  <div style="overflow-x:auto">
+    <table class="admin-table">
+      <thead><tr>
+        <th>E-posta</th><th>Ad</th><th>Plan</th><th>Durum</th>
+        <th>Kayıt</th><th>Son Giriş</th><th>İşlem</th>
+      </tr></thead>
+      <tbody id="userTbody"></tbody>
+    </table>
+  </div>
+  <div class="pager" id="pager"></div>
+</div>
+
+<!-- Plan değiştir modal -->
+<div id="planModal" class="modal-back" style="display:none">
+  <div class="modal-box">
+    <h3>Plan Değiştir</h3>
+    <select id="planSelect">
+      <option value="free">Ücretsiz</option>
+      <option value="personal">Kişisel</option>
+      <option value="family">Aile</option>
+      <option value="business">İşletme</option>
+    </select>
+    <div class="row">
+      <button class="btn-confirm" onclick="confirmPlan()">Kaydet</button>
+      <button class="btn-cancel"  onclick="closePlanModal()">İptal</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toplu e-posta modal -->
+<div id="emailModal" class="modal-back" style="display:none">
+  <div class="modal-box" style="width:480px">
+    <h3>Toplu E-posta Gönder</h3>
+    <select id="emailPlan">
+      <option value="">Tüm Kullanıcılar</option>
+      <option value="free">Ücretsiz</option>
+      <option value="personal">Kişisel</option>
+      <option value="family">Aile</option>
+      <option value="business">İşletme</option>
+    </select>
+    <input id="emailSubject" placeholder="Konu">
+    <textarea id="emailHtml" rows="5" style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;resize:vertical" placeholder="HTML içerik…"></textarea>
+    <div class="row" style="margin-top:8px">
+      <button class="btn-confirm" onclick="sendBulkEmail()">Gönder</button>
+      <button class="btn-cancel"  onclick="document.getElementById('emailModal').style.display='none'">İptal</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const API = "";
+let _token = localStorage.getItem("autotax_token") || "";
+let _currentPage = 1;
+let _editUserId  = null;
+
+async function apiFetch(path, opts={}) {
+  const res = await fetch(API + path, {
+    ...opts,
+    headers: { "Content-Type":"application/json", "Authorization":"Bearer "+_token, ...(opts.headers||{}) }
+  });
+  if (res.status === 401) { location.href="/app"; return null; }
+  if (res.status === 403) { alert("Yönetici yetkisi gerekiyor."); location.href="/app"; return null; }
+  return res.ok ? res.json() : null;
+}
+
+async function loadStats() {
+  const d = await apiFetch("/api/admin/stats");
+  if (!d) return;
+  document.getElementById("sTotalUsers").textContent  = d.total_users;
+  document.getElementById("sActiveUsers").textContent = d.active_users;
+  document.getElementById("sTotalInv").textContent    = d.total_invoices;
+  document.getElementById("sFree").textContent        = d.plan_counts?.free     || 0;
+  document.getElementById("sPersonal").textContent    = d.plan_counts?.personal || 0;
+  document.getElementById("sFamily").textContent      = d.plan_counts?.family   || 0;
+  document.getElementById("sBusiness").textContent    = d.plan_counts?.business || 0;
+}
+
+async function loadUsers(page=1) {
+  _currentPage = page;
+  const search = document.getElementById("fSearch").value;
+  const plan   = document.getElementById("fPlan").value;
+  let url = `/api/admin/users?page=${page}&limit=50`;
+  if (search) url += `&search=${encodeURIComponent(search)}`;
+  if (plan)   url += `&plan=${plan}`;
+  const d = await apiFetch(url);
+  if (!d) return;
+  const tbody = document.getElementById("userTbody");
+  tbody.innerHTML = d.users.map(u => `
+    <tr>
+      <td>${u.email}</td>
+      <td>${u.full_name||"-"}</td>
+      <td><span class="plan-badge plan-${u.plan}">${planLabel(u.plan)}</span></td>
+      <td>${u.is_active ? '<span style="color:#16a34a">●</span> Aktif' : '<span style="color:#dc2626">●</span> Pasif'}</td>
+      <td>${(u.created_at||"").slice(0,10)}</td>
+      <td>${(u.last_login||"-").slice(0,10)}</td>
+      <td><div class="act-btns">
+        <button class="btn-plan"  onclick="openPlanModal('${u.id}','${u.plan}')">Plan</button>
+        ${u.is_active
+          ? `<button class="btn-deact" onclick="toggleActive('${u.id}',false)">Durdur</button>`
+          : `<button class="btn-activ" onclick="toggleActive('${u.id}',true)">Aktifleştir</button>`}
+        ${u.is_admin ? "" : `<button class="btn-del" onclick="deleteUser('${u.id}','${u.email}')">Sil</button>`}
+      </div></td>
+    </tr>`).join("");
+
+  // Sayfalama
+  const pager = document.getElementById("pager");
+  const totalPages = Math.ceil(d.total / 50);
+  pager.innerHTML = `<span style="font-size:13px;color:var(--muted)">${d.total} kullanıcı</span>`;
+  for (let i=1; i<=totalPages; i++) {
+    pager.innerHTML += `<button class="${i===page?'active':''}" onclick="loadUsers(${i})">${i}</button>`;
+  }
+}
+
+function planLabel(p) {
+  return {free:"Ücretsiz",personal:"Kişisel",family:"Aile",business:"İşletme"}[p]||p;
+}
+
+function openPlanModal(uid, currentPlan) {
+  _editUserId = uid;
+  document.getElementById("planSelect").value = currentPlan;
+  document.getElementById("planModal").style.display = "flex";
+}
+function closePlanModal() { document.getElementById("planModal").style.display = "none"; }
+
+async function confirmPlan() {
+  const plan = document.getElementById("planSelect").value;
+  await apiFetch(`/api/admin/users/${_editUserId}`, {
+    method:"PATCH", body: JSON.stringify({plan})
+  });
+  closePlanModal(); loadUsers(_currentPage); loadStats();
+}
+
+async function toggleActive(uid, active) {
+  await apiFetch(`/api/admin/users/${uid}`, {
+    method:"PATCH", body: JSON.stringify({is_active: active})
+  });
+  loadUsers(_currentPage); loadStats();
+}
+
+async function deleteUser(uid, email) {
+  if (!confirm(`"${email}" hesabını silmek istiyor musunuz?`)) return;
+  await apiFetch(`/api/admin/users/${uid}`, { method:"DELETE" });
+  loadUsers(_currentPage); loadStats();
+}
+
+function showEmailModal() { document.getElementById("emailModal").style.display = "flex"; }
+
+async function sendBulkEmail() {
+  const subject = document.getElementById("emailSubject").value.trim();
+  const html    = document.getElementById("emailHtml").value.trim();
+  const plan    = document.getElementById("emailPlan").value || null;
+  if (!subject || !html) { alert("Konu ve içerik zorunlu."); return; }
+  const d = await apiFetch("/api/admin/email", {
+    method:"POST", body: JSON.stringify({subject, html, plan})
+  });
+  if (d) alert(`${d.sent} kullanıcıya e-posta gönderildi.`);
+  document.getElementById("emailModal").style.display = "none";
+}
+
+// Sayfa yükle
+loadStats(); loadUsers(1);
+</script>
+</body>
+</html>

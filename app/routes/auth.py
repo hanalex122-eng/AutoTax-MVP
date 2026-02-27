@@ -112,6 +112,9 @@ def register(data: RegisterIn, response: Response):
     access  = _make_access(user["id"], user["email"], user["plan"])
     refresh = _make_refresh(user["id"])
     _set_cookies(response, access, refresh)
+    # Hoş geldin e-postası
+    from app.services.email_service import send_welcome
+    send_welcome(user["email"], user.get("full_name") or user["email"].split("@")[0])
     return _token_response(access, refresh, user)
 
 

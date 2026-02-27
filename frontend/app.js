@@ -241,6 +241,18 @@ async function doUpload() {
     try {
       const res  = await authFetch(`${API}/api/ocr/upload`, { method: "POST", body: fd });
       const data = await res.json();
+
+      // Duplikasyon uyarısı
+      if (data.duplicate_warning) {
+        const dw = data.duplicate_warning;
+        const msg = `⚠️ Duplik Fatura Tespit Edildi!\n\nBu fatura daha önce sisteme eklenmiş olabilir:\n• Tarih: ${dw.existing_date || "-"}\n• Tutar: €${(dw.existing_total||0).toFixed(2)}\n• Yüklenme: ${(dw.existing_timestamp||"").slice(0,10)}\n\nYine de kaydetmek istiyor musunuz?`;
+        if (!confirm(msg)) {
+          showToast("Fatura iptal edildi.", "warn");
+          uploadBtn.disabled = false;
+          uploadBtn.textContent = "Yükle";
+          return;
+        }
+      }
       if (!res.ok) throw new Error(data.message || res.status);
 
       if (data.needs_review) {

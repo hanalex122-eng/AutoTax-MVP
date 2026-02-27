@@ -10,6 +10,7 @@ from app.routes.ocr   import router as ocr_router
 from app.routes.stats import router as stats_router
 from app.routes.auth  import router as auth_router, get_current_user
 from app.routes.stripe_payments import router as stripe_router
+from app.routes.admin import router as admin_router
 
 ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:8000").split(",")
 
@@ -73,6 +74,9 @@ app.include_router(stripe_router, prefix="/api")
 # Korumalı route'lar — JWT zorunlu
 app.include_router(ocr_router,   prefix="/api", dependencies=[Depends(get_current_user)])
 app.include_router(stats_router, prefix="/api", dependencies=[Depends(get_current_user)])
+
+# Admin route — JWT + is_admin kontrolü
+app.include_router(admin_router, prefix="/api")
 
 
 @app.get("/api/health")

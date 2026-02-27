@@ -180,8 +180,39 @@ def add_invoice(record: dict, filename: str) -> str:
     return inv_id
 
 
+def find_duplicate(vendor: str, date: str, total: float,
+                   invoice_number: str = None) -> dict | None:
+    """
+    Yeni fatura ile aynı (vendor + date + total) veya (invoice_number) olan
+    mevcut kaydı döndürür. Bulamazsa None.
+    """
+    if not vendor and not invoice_number:
+        return None
+    with _conn() as c:
+        # invoice_number ile tam eşleşme (en güvenilir)
+        if invoice_number:
+            row = c.execute(
+                "SELECT id,vendor,date,total,timestamp FROM invoices "
+                "WHERE invoice_number=? AND LOWER(vendor)=LOWER(?) LIMIT 1",
+                (invoice_number, vendor or "")
+            ).fetchone()
+            if row:
+                return dict(row)
+        # vendor + date + total ile yumuşak eşleşme (±%2 tutar toleransı)
+        if vendor and date and total:
+            tol = abs(total) * 0.02 or 0.01
+            row = c.execute(
+                "SELECT id,vendor,date,total,timestamp FROM invoices "
+                "WHERE LOWER(vendor)=LOWER(?) AND date=? "
+                "AND ABS(total - ?) <= ? LIMIT 1",
+                (vendor, date, total, tol)
+            ).fetchone()
+            if row:
+                return dict(row)
+    return None
+
+
 def update_invoice(inv_id: str, fields: dict) -> bool:
-    """Manuel düzeltme — yalnızca izin verilen alanları günceller."""
     allowed = {"vendor", "date", "time", "total", "vat_rate", "vat_amount",
                "invoice_number", "category", "payment_method", "needs_review", "review_reason"}
     updates = {k: v for k, v in fields.items() if k in allowed}
