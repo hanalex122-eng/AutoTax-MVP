@@ -2,10 +2,20 @@
 <html lang="tr" data-theme="light">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta http-equiv="Content-Security-Policy"
         content="default-src 'self' https://cdn.jsdelivr.net; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline';">
   <title>AutoTax.cloud — Akıllı Fatura Yönetimi</title>
+
+  <!-- PWA -->
+  <link rel="manifest" href="/static/manifest.json">
+  <meta name="theme-color" content="#2563eb">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="AutoTax">
+  <link rel="apple-touch-icon" href="/static/icons/icon-192.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="/static/icons/icon-192.png">
+
   <link rel="stylesheet" href="style.css">
   <style>
     .topbar-user {
@@ -97,6 +107,11 @@
     </li>
   </ul>
   <div class="sidebar-bottom">
+    <!-- PWA: Ana Ekrana Ekle butonu -->
+    <button id="btnInstallApp" onclick="installApp()" style="display:none">
+      <svg viewBox="0 0 24 24"><path d="M12 16V4m0 12-4-4m4 4 4-4"/><rect x="2" y="14" width="20" height="6" rx="2"/></svg>
+      Uygulamayı Yükle
+    </button>
     <!-- Plan bilgisi -->
     <div class="plan-widget" id="planWidget">
       <div class="plan-top">

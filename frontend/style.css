@@ -688,3 +688,110 @@ tr.row-expense td { background: rgba(220,38,38,.06); }
 .badge-income  { background: #dcfce7; color: #16a34a; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 700; }
 .badge-expense { background: #fee2e2; color: #dc2626; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 700; }
 
+/* ═══════════════════════════════════════════════════════
+   PWA — Upgrade Overlay & Install Button
+   ═══════════════════════════════════════════════════════ */
+.upgrade-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,.55);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 9999; padding: 20px; backdrop-filter: blur(3px);
+}
+.upgrade-box {
+  background: var(--surface); border-radius: 16px; padding: 36px 32px;
+  max-width: 380px; width: 100%; text-align: center;
+  box-shadow: 0 20px 60px rgba(0,0,0,.25);
+}
+.upgrade-icon { font-size: 48px; margin-bottom: 16px; }
+.upgrade-box h3 { font-size: 20px; margin-bottom: 10px; color: var(--text); }
+.upgrade-box p  { color: var(--muted); font-size: 15px; line-height: 1.6; margin-bottom: 24px; }
+.upgrade-actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+
+#btnInstallApp {
+  display: none; align-items: center; gap: 8px;
+  margin: 8px 12px 0; padding: 9px 16px; border-radius: 99px;
+  background: var(--primary); color: #fff; border: none; cursor: pointer;
+  font-size: 13px; font-weight: 600; width: calc(100% - 24px);
+  justify-content: center; transition: background var(--transition);
+}
+#btnInstallApp:hover { background: var(--primary-h); }
+#btnInstallApp svg  { width: 16px; height: 16px; stroke: currentColor; fill: none; stroke-width: 2; }
+
+/* ═══════════════════════════════════════════════════════
+   Mobile Responsive — 768px altı
+   ═══════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  /* Sidebar → bottom navigation */
+  .sidebar {
+    position: fixed; bottom: 0; left: 0; right: 0; top: auto;
+    width: 100%; height: auto; border-right: none;
+    border-top: 1px solid var(--border);
+    flex-direction: row; padding: 0;
+    z-index: 100; background: var(--surface);
+    box-shadow: 0 -2px 12px rgba(0,0,0,.08);
+  }
+  .sidebar-logo { display: none; }
+  .sidebar-bottom { display: none; }
+  .nav-links {
+    display: flex; flex-direction: row; width: 100%;
+    overflow-x: auto; padding: 0; gap: 0;
+    scrollbar-width: none;
+  }
+  .nav-links::-webkit-scrollbar { display: none; }
+  .nav-links li {
+    flex: 1; min-width: 60px; flex-direction: column;
+    padding: 8px 4px; font-size: 10px; gap: 3px;
+    border-radius: 0; border-left: none; border-top: 3px solid transparent;
+    justify-content: center;
+  }
+  .nav-links li.active { border-top-color: var(--primary); border-left: none; }
+  .nav-links li svg { width: 20px; height: 20px; }
+
+  /* Main content için alt boşluk (bottom nav kadar) */
+  .main-content { margin-left: 0; padding: 16px 12px 80px; }
+
+  /* Topbar kompakt */
+  .topbar { padding: 8px 12px; }
+  .topbar h1 { font-size: 18px; }
+
+  /* Tablo → card görünümü */
+  .invoice-table thead { display: none; }
+  .invoice-table tbody tr {
+    display: block; border: 1px solid var(--border);
+    border-radius: var(--radius-sm); margin-bottom: 10px;
+    padding: 12px; background: var(--surface);
+  }
+  .invoice-table tbody td {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 4px 0; border: none; font-size: 13px;
+  }
+  .invoice-table tbody td::before {
+    content: attr(data-label);
+    font-weight: 600; color: var(--muted); font-size: 11px; text-transform: uppercase;
+    min-width: 90px;
+  }
+
+  /* KPI grid tek sütun */
+  .kpi-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+
+  /* Upload alanı */
+  .drop-zone { padding: 32px 16px; }
+
+  /* Modal tam ekran */
+  .modal-content { border-radius: 16px 16px 0 0; max-height: 92vh; margin: auto 0 0; }
+
+  /* Plan widget sidebar'da gizlendiği için topbar'a taşı */
+  .plan-widget { display: none; }
+}
+
+@media (max-width: 480px) {
+  .kpi-grid { grid-template-columns: 1fr; }
+  .filter-bar { flex-direction: column; }
+  .filter-bar input, .filter-bar select { width: 100%; }
+}
+
+/* iOS safe area desteği */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .sidebar { padding-bottom: env(safe-area-inset-bottom); }
+  .main-content { padding-bottom: calc(80px + env(safe-area-inset-bottom)); }
+}
+

@@ -80,5 +80,23 @@ def health():
     return {"status": "ok", "version": "4.0.0"}
 
 
+# PWA dosyaları root'ta erişilebilir olmalı (service worker scope için)
+from fastapi.responses import FileResponse
+
+@app.get("/sw.js", include_in_schema=False)
+def sw():
+    return FileResponse("frontend/sw.js", media_type="application/javascript")
+
+@app.get("/offline.html", include_in_schema=False)
+def offline():
+    return FileResponse("frontend/offline.html", media_type="text/html")
+
+# Statik dosyalar (icons, manifest)
+if os.path.isdir("static"):
+    app.mount("/static", StaticFiles(directory="static"), name="static_root")
+
+# Frontend statik
 if os.path.isdir("frontend"):
+    # manifest.json ve sw.js'i frontend klasöründen de serve et
+    app.mount("/static", StaticFiles(directory="frontend"), name="static_fe")
     app.mount("/", StaticFiles(directory="frontend", html=True), name="frontend")

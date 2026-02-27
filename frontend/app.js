@@ -1145,3 +1145,59 @@ async function loadPlanWidget() {
     }
   } catch (e) { /* sessiz hata */ }
 }
+
+// ── PWA: Service Worker kaydı ────────────────────────────────────────────────
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/static/sw.js")
+      .then(() => console.log("SW registered"))
+      .catch(() => {});
+  });
+}
+
+// ── PWA: "Ana Ekrana Ekle" prompt ────────────────────────────────────────────
+let _deferredInstall = null;
+window.addEventListener("beforeinstallprompt", (e) => {
+  e.preventDefault();
+  _deferredInstall = e;
+  const btn = document.getElementById("btnInstallApp");
+  if (btn) btn.style.display = "flex";
+});
+
+window.addEventListener("appinstalled", () => {
+  _deferredInstall = null;
+  const btn = document.getElementById("btnInstallApp");
+  if (btn) btn.style.display = "none";
+});
+
+window.installApp = async () => {
+  if (!_deferredInstall) return;
+  _deferredInstall.prompt();
+  const { outcome } = await _deferredInstall.userChoice;
+  if (outcome === "accepted") _deferredInstall = null;
+};
+
+// ── Plan: Kilitli özellik overlay ────────────────────────────────────────────
+window.showUpgradePrompt = (feature) => {
+  const msg = {
+    qr:       "QR Kod okuma Kişisel plan ve üzerinde kullanılabilir.",
+    api:      "API erişimi İşletme planında kullanılabilir.",
+    members:  "Aile paylaşımı Aile planı ve üzerinde kullanılabilir.",
+    export:   "Gelişmiş export Kişisel plan ve üzerinde kullanılabilir.",
+  };
+  const text = msg[feature] || "Bu özellik üst planda kullanılabilir.";
+  const overlay = document.createElement("div");
+  overlay.className = "upgrade-overlay";
+  overlay.innerHTML = `
+    <div class="upgrade-box">
+      <div class="upgrade-icon">🔒</div>
+      <h3>Plan Yükseltmesi Gerekiyor</h3>
+      <p>${text}</p>
+      <div class="upgrade-actions">
+        <a href="/landing.html#pricing" class="btn btn-primary">Planları Gör</a>
+        <button class="btn btn-ghost" onclick="this.closest('.upgrade-overlay').remove()">Kapat</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+  overlay.addEventListener("click", (e) => { if (e.target === overlay) overlay.remove(); });
+};
