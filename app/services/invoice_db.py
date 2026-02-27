@@ -112,7 +112,7 @@ def _migrate_json():
 
         with _conn() as c:
             c.executemany(
-                "INSERT OR IGNORE INTO invoices VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                "INSERT OR IGNORE INTO invoices VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 rows,
             )
 
@@ -195,19 +195,19 @@ def find_duplicate(vendor: str, date: str, total: float,
                    user_id: str = None) -> dict | None:
     """
     Yeni fatura ile aynı (vendor + date + total) veya (invoice_number) olan
-    mevcut kaydı döndürür. Kullanıcıya özgü arama (user_id zorunlu).
+    mevcut kaydı döndürür. Kullanıcıya özgü arama — user_id zorunlu.
     """
+    if not user_id:
+        return None
     if not vendor and not invoice_number:
         return None
-    uid_clause = "AND user_id=?" if user_id else ""
-    uid_param  = [user_id] if user_id else []
     with _conn() as c:
         # invoice_number ile tam eşleşme (en güvenilir)
         if invoice_number:
             row = c.execute(
-                f"SELECT id,vendor,date,total,timestamp FROM invoices "
-                f"WHERE invoice_number=? AND LOWER(vendor)=LOWER(?) {uid_clause} LIMIT 1",
-                [invoice_number, vendor or ""] + uid_param
+                "SELECT id,vendor,date,total,timestamp FROM invoices "
+                "WHERE invoice_number=? AND LOWER(vendor)=LOWER(?) AND user_id=? LIMIT 1",
+                [invoice_number, vendor or "", user_id]
             ).fetchone()
             if row:
                 return dict(row)
@@ -215,10 +215,10 @@ def find_duplicate(vendor: str, date: str, total: float,
         if vendor and date and total:
             tol = abs(total) * 0.02 or 0.01
             row = c.execute(
-                f"SELECT id,vendor,date,total,timestamp FROM invoices "
-                f"WHERE LOWER(vendor)=LOWER(?) AND date=? "
-                f"AND ABS(total - ?) <= ? {uid_clause} LIMIT 1",
-                [vendor, date, total, tol] + uid_param
+                "SELECT id,vendor,date,total,timestamp FROM invoices "
+                "WHERE LOWER(vendor)=LOWER(?) AND date=? "
+                "AND ABS(total - ?) <= ? AND user_id=? LIMIT 1",
+                [vendor, date, total, tol, user_id]
             ).fetchone()
             if row:
                 return dict(row)
@@ -229,15 +229,13 @@ def find_recurring(vendor: str, months: int = 3,
                    user_id: str = None) -> list[dict]:
     """
     Aynı firmadan son N ayda düzenli fatura var mı kontrol et.
-    user_id verilirse sadece o kullanıcının faturaları sorgulanır.
+    user_id zorunlu — verilmezse boş liste döner (anonim IDOR engeli).
     """
-    if not vendor:
+    if not vendor or not user_id:
         return []
-    uid_clause = "AND user_id=?" if user_id else ""
-    uid_param  = [user_id] if user_id else []
     with _conn() as c:
         rows = c.execute(
-            f"""
+            """
             SELECT strftime('%Y-%m', date) as month,
                    COUNT(*) as cnt,
                    AVG(total) as avg_total,
@@ -246,11 +244,11 @@ def find_recurring(vendor: str, months: int = 3,
             FROM invoices
             WHERE LOWER(vendor)=LOWER(?)
               AND date >= date('now', ?)
-              {uid_clause}
+              AND user_id=?
             GROUP BY month
             ORDER BY month DESC
             """,
-            [vendor, f"-{months} months"] + uid_param
+            [vendor, f"-{months} months", user_id]
         ).fetchall()
     return [dict(r) for r in rows]
 

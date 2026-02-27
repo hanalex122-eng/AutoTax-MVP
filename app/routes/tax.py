@@ -22,6 +22,8 @@ def _inv_conn():
     import sqlite3
     c = sqlite3.connect(str(_SQLITE_PATH), check_same_thread=False)
     c.row_factory = sqlite3.Row
+    c.execute("PRAGMA journal_mode=WAL")
+    c.execute("PRAGMA synchronous=NORMAL")
     return c
 
 
