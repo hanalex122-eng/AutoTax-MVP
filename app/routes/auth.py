@@ -13,6 +13,7 @@ from app.services.user_db import (
     verify_password, update_last_login,
     save_refresh_token, get_refresh_token, revoke_refresh_token,
     revoke_all_user_tokens, check_quota, PLANS,
+    create_password_reset_token, verify_reset_token, consume_reset_token,
 )
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
@@ -223,3 +224,52 @@ def _token_response(access: str, refresh: str, user: dict) -> dict:
             "usage": {"used": used, "limit": limit},
         },
     }
+
+
+# ── Şifre Sıfırlama Modeller ──────────────────────────────
+class ForgotIn(BaseModel):
+    email: EmailStr
+
+class ResetIn(BaseModel):
+    token:    str
+    password: str
+
+    @field_validator("password")
+    @classmethod
+    def pw_strength(cls, v):
+        if len(v) < 8:
+            raise ValueError("Şifre en az 8 karakter olmalıdır.")
+        return v
+
+
+# ── Şifremi Unuttum ───────────────────────────────────────
+@router.post("/forgot-password", status_code=200)
+def forgot_password(data: ForgotIn):
+    """
+    E-posta varsa reset linki gönder.
+    Güvenlik için: kullanıcı var/yok fark etmeksizin aynı mesaj döner.
+    """
+    token = create_password_reset_token(data.email)
+    if token:
+        from app.services.email_service import send_password_reset
+        app_url = os.getenv("APP_URL", "https://autotax-mvp-production-74be.up.railway.app")
+        reset_link = f"{app_url}/reset-password.html?token={token}"
+        send_password_reset(data.email, reset_link)
+    return {"message": "Şifre sıfırlama bağlantısı e-posta adresinize gönderildi (kayıtlıysa)."}
+
+
+@router.post("/reset-password", status_code=200)
+def reset_password(data: ResetIn):
+    ok = consume_reset_token(data.token, data.password)
+    if not ok:
+        raise HTTPException(status_code=400, detail="Geçersiz veya süresi dolmuş bağlantı.")
+    return {"message": "Şifreniz başarıyla güncellendi. Giriş yapabilirsiniz."}
+
+
+@router.get("/verify-reset-token")
+def verify_reset(token: str):
+    user = verify_reset_token(token)
+    if not user:
+        raise HTTPException(status_code=400, detail="Geçersiz veya süresi dolmuş bağlantı.")
+    return {"valid": True, "email": user["email"]}
+

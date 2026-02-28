@@ -106,6 +106,13 @@ CREATE TABLE IF NOT EXISTS invoice_usage (
     count      INTEGER NOT NULL DEFAULT 0,
     PRIMARY KEY (user_id, month)
 );
+
+CREATE TABLE IF NOT EXISTS password_reset_tokens (
+    token      TEXT PRIMARY KEY,
+    user_id    TEXT NOT NULL,
+    expires_at TEXT NOT NULL,
+    used       INTEGER NOT NULL DEFAULT 0
+);
 """
 
 
@@ -417,5 +424,50 @@ def delete_user(user_id: str) -> bool:
             c.execute("DELETE FROM users WHERE id=?", (user_id,))
     return True
 
+
+# ── Şifre Sıfırlama ───────────────────────────────────────
+def create_password_reset_token(email: str) -> str | None:
+    """E-posta varsa reset token oluştur, yoksa None döndür."""
+    user = get_user_by_email(email)
+    if not user:
+        return None
+    token = str(uuid.uuid4())
+    expires = (datetime.utcnow() + timedelta(hours=2)).isoformat()
+    with _LOCK:
+        with _conn() as c:
+            # Eski tokenları geçersiz kıl
+            c.execute("DELETE FROM password_reset_tokens WHERE user_id=?", (user["id"],))
+            c.execute(
+                "INSERT INTO password_reset_tokens (token, user_id, expires_at, used) VALUES (?,?,?,0)",
+                (token, user["id"], expires)
+            )
+    return token
+
+
+def verify_reset_token(token: str) -> dict | None:
+    """Token geçerliyse user dict döndür, değilse None."""
+    with _conn() as c:
+        row = c.execute(
+            "SELECT * FROM password_reset_tokens WHERE token=? AND used=0",
+            (token,)
+        ).fetchone()
+    if not row:
+        return None
+    if datetime.utcnow().isoformat() > row["expires_at"]:
+        return None
+    return get_user_by_id(row["user_id"])
+
+
+def consume_reset_token(token: str, new_password: str) -> bool:
+    """Token doğruysa şifreyi değiştir ve token'ı kullanıldı işaretle."""
+    user = verify_reset_token(token)
+    if not user:
+        return False
+    new_hash = hash_password(new_password)
+    with _LOCK:
+        with _conn() as c:
+            c.execute("UPDATE users SET password_hash=? WHERE id=?", (new_hash, user["id"]))
+            c.execute("UPDATE password_reset_tokens SET used=1 WHERE token=?", (token,))
+    return True
 
 _init()
