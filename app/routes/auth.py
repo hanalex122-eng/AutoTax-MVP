@@ -108,12 +108,6 @@ def require_admin(user: dict = Depends(get_current_user)) -> dict:
 # ── Endpoint'ler ──────────────────────────────────────────
 @router.post("/register", status_code=201)
 def register(data: RegisterIn, response: Response):
-    # GDPR Madde 7 — sunucu tarafında onay zorunluluğu
-    if not data.gdpr_consent:
-        raise HTTPException(
-            status_code=422,
-            detail="GDPR onayı zorunludur. Kişisel verilerinizin işlenmesine izin verin."
-        )
     if get_user_by_email(data.email):
         raise HTTPException(status_code=409, detail="Bu e-posta zaten kayıtlı.")
     user    = create_user(data.email, data.password, data.full_name)
