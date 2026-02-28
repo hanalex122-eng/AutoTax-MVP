@@ -97,6 +97,26 @@ def health():
     return {"status": "ok", "version": "4.0.0"}
 
 
+@app.post("/api/setup-admin")
+def setup_admin():
+    """Sadece hiç admin yoksa ilk admin hesabını oluşturur."""
+    from app.services.user_db import _conn, _LOCK
+    import bcrypt, uuid
+    from datetime import datetime
+    with _conn() as c:
+        admin_count = c.execute("SELECT COUNT(*) FROM users WHERE is_admin=1").fetchone()[0]
+        if admin_count > 0:
+            raise HTTPException(status_code=403, detail="Admin zaten mevcut.")
+        user_id = str(uuid.uuid4())
+        pw_hash = bcrypt.hashpw("Autotax2026!".encode(), bcrypt.gensalt()).decode()
+        with _LOCK:
+            c.execute(
+                "INSERT INTO users (id,email,full_name,password_hash,plan,is_active,is_admin,created_at) VALUES (?,?,?,?,?,?,?,?)",
+                (user_id, "hanalex122@gmail.com", "Alex Han", pw_hash, "personal", 1, 1, datetime.utcnow().isoformat())
+            )
+    return {"ok": True, "email": "hanalex122@gmail.com", "password": "Autotax2026!"}
+
+
 @app.delete("/api/user/delete-account")
 async def delete_account(current_user: dict = Depends(get_current_user)):
     from app.services.user_db    import delete_user
