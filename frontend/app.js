@@ -1058,6 +1058,18 @@ async function loadLedger() {
   if (!res || !res.ok) return;
   const d = await res.json();
 
+  // Boş veri kontrolü
+  const tbody = document.getElementById("ldgTbody");
+  if (!d || (d.count_income === 0 && d.count_expense === 0)) {
+    if (tbody) tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:40px;color:#888">
+      <div style="font-size:48px">📭</div>
+      <div style="margin-top:8px;font-size:15px">Henüz fatura yüklenmedi.</div>
+      <div style="margin-top:4px;font-size:13px;color:#aaa">OCR ile fatura yükleyin, muhasebe defteri otomatik oluşur.</div>
+    </td></tr>`;
+    ["ldgIncome","ldgExpense","ldgNet"].forEach(id => { const el=document.getElementById(id); if(el) el.textContent="0,00"; });
+    return;
+  }
+
   const fmt = v => (v !== null && v !== undefined) ? v.toLocaleString(USER_LOCALE, {minimumFractionDigits:2, maximumFractionDigits:2}) : "—";
 
   // KPI kartlar
@@ -1213,3 +1225,28 @@ window.showUpgradePrompt = (feature) => {
   document.body.appendChild(overlay);
   overlay.addEventListener("click", (e) => { if (e.target === overlay) overlay.remove(); });
 };
+
+/* ── Dil & Para Birimi Ayarları ── */
+window.saveLangSetting = function() {
+  const lang = document.querySelector('input[name="appLang"]:checked')?.value || "tr";
+  localStorage.setItem("autotax_lang", lang);
+  const msg = document.getElementById("langSaveMsg");
+  if (msg) { msg.style.display = "block"; setTimeout(() => msg.style.display = "none", 2500); }
+};
+
+window.saveCurrencySetting = function() {
+  const cur = document.getElementById("currencySelect")?.value || "EUR";
+  localStorage.setItem("autotax_currency", cur);
+  showToast("Para birimi kaydedildi: " + cur);
+};
+
+/* Sayfa yüklenince kayıtlı dil/para birimi uygula */
+(function initSettings() {
+  const lang = localStorage.getItem("autotax_lang") || "tr";
+  const cur  = localStorage.getItem("autotax_currency") || "EUR";
+  const langRadio = document.querySelector(`input[name="appLang"][value="${lang}"]`);
+  if (langRadio) langRadio.checked = true;
+  const curSel = document.getElementById("currencySelect");
+  if (curSel) curSel.value = cur;
+})();
+

@@ -20,8 +20,9 @@ invoices_db.json
 *.db
 *.sqlite
 
-# Modeller (büyük dosya)
+# Modeller (büyük ML dosyaları - ama app/models/ Python paketi hariç)
 models/
+!app/models/
 
 # IDE
 .vscode/
