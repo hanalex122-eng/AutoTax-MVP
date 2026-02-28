@@ -985,7 +985,9 @@ function esc(s) {
     .replace(/"/g,"&quot;").replace(/'/g,"&#39;");
 }
 function fmtMoney(v) {
-  return Number(v).toLocaleString("tr-TR", { minimumFractionDigits:2, maximumFractionDigits:2 }) + " â‚¬";
+  const cur = localStorage.getItem("autotax_currency") || "EUR";
+  const sym = { EUR: "€", USD: "$", GBP: "£", TRY: "₺", CHF: "₣" }[cur] || cur;
+  return Number(v).toLocaleString("de-DE", { minimumFractionDigits:2, maximumFractionDigits:2 }) + " " + sym;
 }
 function fmtSize(b) {
   return b > 1024*1024 ? (b/1024/1024).toFixed(1)+" MB" : (b/1024).toFixed(0)+" KB";
