@@ -564,6 +564,46 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="app.js" type="module"></script>
 
+<!-- Dil & Para Birimi kaydet fonksiyonları — global scope (module dışı) -->
+<script>
+function saveLangSetting() {
+  const sel = document.querySelector('input[name="appLang"]:checked');
+  if (!sel) return;
+  localStorage.setItem("autotax_lang", sel.value);
+  const msg = document.getElementById("langSaveMsg");
+  if (msg) { msg.style.display = "block"; setTimeout(()=>{ msg.style.display="none"; }, 2000); }
+}
+function saveCurrencySetting() {
+  const sel = document.getElementById("currencySelect");
+  if (!sel) return;
+  localStorage.setItem("autotax_currency", sel.value);
+  const sym = { EUR:"€", USD:"$", TRY:"₺", GBP:"£", CHF:"₣" }[sel.value] || sel.value;
+  // Toast göster
+  const t = document.createElement("div");
+  t.textContent = "✓ Para birimi " + sym + " olarak kaydedildi";
+  t.style.cssText = "position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#22c55e;color:#fff;padding:10px 22px;border-radius:20px;font-size:14px;z-index:9999;font-weight:600";
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 2200);
+}
+
+// Offline CDN yedek: Chart.js yüklenmediyse uyarı göster
+window.addEventListener("load", () => {
+  if (typeof Chart === "undefined") {
+    console.warn("Chart.js CDN yüklenemedi — offline modda grafikler devre dışı");
+  }
+  if (typeof XLSX === "undefined") {
+    console.warn("xlsx CDN yüklenemedi — Excel export devre dışı");
+  }
+  // Kayıtlı dil/para birimi seçeneğini işaretle
+  const lang = localStorage.getItem("autotax_lang") || "tr";
+  const cur  = localStorage.getItem("autotax_currency") || "EUR";
+  const radio = document.querySelector(`input[name="appLang"][value="${lang}"]`);
+  if (radio) radio.checked = true;
+  const curSel = document.getElementById("currencySelect");
+  if (curSel) curSel.value = cur;
+});
+</script>
+
 <!-- ── Muhasebe Defteri View ── -->
 <section id="view-settings" class="view" style="display:none">
   <div class="page-header"><h2>Dil Ayarları</h2></div>
