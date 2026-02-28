@@ -78,9 +78,11 @@
     }
     input:focus { border-color: var(--brand); box-shadow: 0 0 0 3px rgba(37,99,235,.12); }
     input.error-input { border-color: var(--error); }
-    .eye-btn { position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
-               background: none; border: none; cursor: pointer; color: var(--muted); padding: 4px; }
+    .eye-btn { position: absolute; right: 14px; top: 50%; transform: translateY(-50%);
+               background: none; border: none; cursor: pointer; color: var(--muted); padding: 4px; z-index: 2; }
     .eye-btn:hover { color: var(--brand); }
+    input[type="password"]::-ms-reveal,
+    input[type="password"]::-ms-clear { display: none; }
 
     /* Password strength */
     .pw-strength { margin-top: 6px; display: flex; gap: 4px; }
@@ -261,14 +263,14 @@
       </p>
 
       <!-- GDPR Onay Kutusu -->
-      <div style="background:#1e3a5f;border:2px solid #3b82f6;border-radius:12px;padding:18px 20px;margin-bottom:20px;box-shadow:0 0 0 4px rgba(59,130,246,.15)">
-        <div style="font-size:12px;font-weight:700;color:#60a5fa;letter-spacing:1px;margin-bottom:10px">🔒 GDPR / VERİ GİZLİLİĞİ ONAYI</div>
-        <label style="display:flex;align-items:flex-start;gap:14px;cursor:pointer;font-size:14px;color:#e2e8f0;line-height:1.6">
+      <div style="background:#eff6ff;border:2px solid #3b82f6;border-radius:12px;padding:18px 20px;margin-bottom:20px;">
+        <div style="font-size:12px;font-weight:700;color:#1d4ed8;letter-spacing:1px;margin-bottom:10px">🔒 GDPR / VERİ GİZLİLİĞİ ONAYI</div>
+        <label style="display:flex;align-items:flex-start;gap:14px;cursor:pointer;font-size:14px;color:#1e293b;line-height:1.6">
           <input type="checkbox" id="gdpr-consent" required
-            style="margin-top:2px;width:22px;height:22px;flex-shrink:0;accent-color:#3b82f6;cursor:pointer">
+            style="margin-top:2px;width:22px;height:22px;flex-shrink:0;accent-color:#2563eb;cursor:pointer">
           <span>
             Kişisel verilerimin (e-posta, ad, fatura verileri) AutoTax.cloud tarafından
-            <a href="/privacy.html" target="_blank" style="color:#60a5fa;text-decoration:underline">Gizlilik Politikası</a>'na
+            <a href="/privacy.html" target="_blank" style="color:#2563eb;text-decoration:underline">Gizlilik Politikası</a>'na
             uygun şekilde <strong>AB/GDPR</strong> kuralları çerçevesinde işlenmesini onaylıyorum.
             Verilerimi istediğim zaman silebileceğimi biliyorum.
           </span>

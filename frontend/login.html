@@ -132,10 +132,13 @@
     input.error-input { border-color: var(--error); }
 
     .eye-btn {
-      position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+      position: absolute; right: 14px; top: 50%; transform: translateY(-50%);
       background: none; border: none; cursor: pointer; color: var(--muted); padding: 4px;
+      z-index: 2;
     }
     .eye-btn:hover { color: var(--brand); }
+    input[type="password"]::-ms-reveal,
+    input[type="password"]::-ms-clear { display: none; }
 
     .form-footer { display: flex; justify-content: space-between; align-items: center;
                    font-size: 13px; margin-bottom: 20px; }
