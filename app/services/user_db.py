@@ -118,6 +118,27 @@ def _conn() -> sqlite3.Connection:
 def _init():
     _DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     with _conn() as c:
+        # Önce mevcut tablo varsa eksik kolonları ekle (migration)
+        cols = [r[1] for r in c.execute(
+            "PRAGMA table_info(users)"
+        ).fetchall()]
+        migrations = [
+            ("family_id",              "ALTER TABLE users ADD COLUMN family_id TEXT"),
+            ("role",                   "ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'owner'"),
+            ("is_admin",               "ALTER TABLE users ADD COLUMN is_admin INTEGER NOT NULL DEFAULT 0"),
+            ("plan_expires",           "ALTER TABLE users ADD COLUMN plan_expires TEXT"),
+            ("stripe_subscription_id", "ALTER TABLE users ADD COLUMN stripe_subscription_id TEXT"),
+            ("last_login",             "ALTER TABLE users ADD COLUMN last_login TEXT"),
+        ]
+        if cols:  # Tablo zaten varsa migration uygula
+            for col_name, sql in migrations:
+                if col_name not in cols:
+                    try:
+                        c.execute(sql)
+                        print(f"[AutoTax] Migration OK: users.{col_name}")
+                    except Exception as e:
+                        print(f"[AutoTax] Migration skip {col_name}: {e}")
+        # Sonra DDL (yeni kurulum için tabloları oluştur)
         c.executescript(_DDL)
 
 
