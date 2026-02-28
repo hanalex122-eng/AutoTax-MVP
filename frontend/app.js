@@ -1251,7 +1251,8 @@ window.saveCurrencySetting = function() {
 })();
 
 /* ─── KAMERA / EKRAN YAKALAMA ───────────────────────────────── */
-let _cameraStream = null;
+let _cameraStream   = null;
+let _qrScanInterval = null;  // FIX: interval sızıntısını önlemek için modül düzeyinde
 
 async function _uploadBlob(blob, filename) {
   const fd = new FormData();
@@ -1273,7 +1274,9 @@ async function _uploadBlob(blob, filename) {
 }
 
 function _stopCamera() {
-  if (_cameraStream) { _cameraStream.getTracks().forEach(t => t.stop()); _cameraStream = null; }
+  // FIX: interval'i burada da temizle (QR modu için)
+  if (_qrScanInterval) { clearInterval(_qrScanInterval); _qrScanInterval = null; }
+  if (_cameraStream)   { _cameraStream.getTracks().forEach(t => t.stop()); _cameraStream = null; }
   const modal = document.getElementById("cameraModal");
   if (modal) modal.style.display = "none";
 }
@@ -1282,21 +1285,22 @@ document.addEventListener("DOMContentLoaded", () => {
 
   /* Kamera */
   document.getElementById("btnCamera")?.addEventListener("click", async () => {
-    const modal = document.getElementById("cameraModal");
-    const video = document.getElementById("cameraVideo");
+    const modal = document.getElementById("cameraModal");  // FIX: yerel referans
+    const video = document.getElementById("cameraVideo");  // FIX: yerel referans
     if (!modal || !video) return;
     try {
       _cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false });
       video.srcObject = _cameraStream;
       modal.style.display = "flex";
     } catch(e) {
-      showToast("❌ Kamera erişimi reddedildi: " + e.message);
+      _stopCamera();
+      showToast("❌ Kamera erişimi reddedildi: " + e.message);  // FIX: try/catch
     }
   });
 
   document.getElementById("btnCapture")?.addEventListener("click", () => {
-    const video  = document.getElementById("cameraVideo");
-    const canvas = document.getElementById("cameraCanvas");
+    const video  = document.getElementById("cameraVideo");   // FIX: yerel referans
+    const canvas = document.getElementById("cameraCanvas");  // FIX: yerel referans
     if (!video || !canvas) return;
     canvas.width  = video.videoWidth;
     canvas.height = video.videoHeight;
@@ -1309,27 +1313,29 @@ document.addEventListener("DOMContentLoaded", () => {
 
   document.getElementById("btnCameraClose")?.addEventListener("click", _stopCamera);
 
-  /* Ekran görüntüsü */
+  /* Ekran görüntüsü — FIX: ImageCapture yerine video+canvas (Firefox/Safari uyumlu) */
   document.getElementById("btnScreen")?.addEventListener("click", async () => {
     try {
       const stream = await navigator.mediaDevices.getDisplayMedia({ video: true });
-      const track  = stream.getVideoTracks()[0];
-      const ic     = new ImageCapture(track);
-      const bmp    = await ic.grabFrame();
-      track.stop();
+      const tmpVideo = document.createElement("video");
+      tmpVideo.srcObject = stream;
+      tmpVideo.muted = true;
+      await tmpVideo.play();
       const canvas = document.createElement("canvas");
-      canvas.width  = bmp.width;
-      canvas.height = bmp.height;
-      canvas.getContext("2d").drawImage(bmp, 0, 0);
+      canvas.width  = tmpVideo.videoWidth;
+      canvas.height = tmpVideo.videoHeight;
+      canvas.getContext("2d").drawImage(tmpVideo, 0, 0);
+      stream.getTracks().forEach(t => t.stop());
+      tmpVideo.srcObject = null;
       canvas.toBlob(blob => {
         if (blob) _uploadBlob(blob, "ekran_" + Date.now() + ".png");
       }, "image/png");
     } catch(e) {
-      showToast("❌ Ekran yakalama iptal edildi veya desteklenmiyor");
+      showToast("❌ Ekran yakalama iptal edildi: " + e.message);  // FIX: try/catch
     }
   });
 
-  /* QR kod — kameradan QR okuma (BarcodeDetector API) */
+  /* QR kod — FIX: JSON blob değil, kamera çerçevesini JPEG olarak gönder */
   document.getElementById("btnQR")?.addEventListener("click", async () => {
     if (!("BarcodeDetector" in window)) {
       showToast("⚠️ Tarayıcınız QR okumayı desteklemiyor. Faturayı fotoğraf olarak yükleyin.");
@@ -1344,22 +1350,29 @@ document.addEventListener("DOMContentLoaded", () => {
       modal.style.display = "flex";
       showToast("🔲 QR kodu kameraya gösterin, otomatik algılanacak…");
       const detector = new BarcodeDetector({ formats: ["qr_code"] });
-      const scan = setInterval(async () => {
+      // FIX: interval ID modül değişkeninde saklanıyor → _stopCamera() onu da temizler
+      _qrScanInterval = setInterval(async () => {
         try {
           const codes = await detector.detect(video);
           if (codes.length > 0) {
-            clearInterval(scan);
             const qrValue = codes[0].rawValue;
-            _stopCamera();
+            // FIX: QR okunduktan sonra kamera çerçevesini JPEG olarak yükle (JSON değil)
+            const canvas = document.createElement("canvas");
+            canvas.width  = video.videoWidth;
+            canvas.height = video.videoHeight;
+            canvas.getContext("2d").drawImage(video, 0, 0);
+            _stopCamera();  // interval + stream birlikte temizlenir
             showToast("✅ QR okundu: " + qrValue.substring(0, 60));
-            const blob = new Blob([JSON.stringify({ qr_content: qrValue, scanned_at: new Date().toISOString() })], { type: "application/json" });
-            _uploadBlob(blob, "qr_" + Date.now() + ".json");
+            canvas.toBlob(blob => {
+              if (blob) _uploadBlob(blob, "qr_" + Date.now() + ".jpg");
+            }, "image/jpeg", 0.92);
           }
         } catch(_) {}
       }, 500);
-      setTimeout(() => { clearInterval(scan); _stopCamera(); }, 30000);
+      setTimeout(() => { if (_qrScanInterval) _stopCamera(); }, 30000);
     } catch(e) {
-      showToast("❌ Kamera erişimi reddedildi: " + e.message);
+      _stopCamera();
+      showToast("❌ Kamera erişimi reddedildi: " + e.message);  // FIX: try/catch
     }
   });
 
