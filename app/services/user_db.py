@@ -4,8 +4,10 @@ import bcrypt
 from datetime import datetime, timedelta
 from pathlib import Path
 from threading import Lock
+import os
 
-_DB_PATH = Path("storage/users.db")
+_DB_PATH = Path(os.getenv("USERS_DB_PATH", "storage/users.db"))
+_DB_PATH.parent.mkdir(parents=True, exist_ok=True)
 _LOCK    = Lock()
 
 # ── Plan tanımları ────────────────────────────────────────

@@ -9,7 +9,8 @@ from app.config import settings
 
 # ── Yollar ────────────────────────────────────────────────
 _JSON_PATH = Path(settings.DB_PATH)
-DB_PATH    = _JSON_PATH.parent / "invoices.db"
+DB_PATH    = Path(settings.SQLITE_PATH)
+DB_PATH.parent.mkdir(parents=True, exist_ok=True)
 _LOCK      = Lock()
 
 
