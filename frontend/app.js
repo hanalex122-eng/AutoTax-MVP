@@ -992,7 +992,7 @@ function fmtMoney(v) {
 function fmtSize(b) {
   return b > 1024*1024 ? (b/1024/1024).toFixed(1)+" MB" : (b/1024).toFixed(0)+" KB";
 }
-function short(s, n) { return s && s.length > n ? s.slice(0,n-1)+"â€¦" : (s||""); }
+function short(s, n) { return s && s.length > n ? s.slice(0,n-1)+"..." : (s||""); }
 function today()     { return new Date().toISOString().slice(0,10); }
 
 // Kullanıcının bölgesine göre tarih formatı (DB'de YYYY-MM-DD, gösterimde yerel format)
