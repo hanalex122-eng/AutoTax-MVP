@@ -71,11 +71,17 @@ async def validation_handler(request: Request, exc: RequestValidationError):
     )
 
 
+from fastapi import HTTPException as FastAPIHTTPException
+
+@app.exception_handler(FastAPIHTTPException)
+async def http_exception_handler(request: Request, exc: FastAPIHTTPException):
+    return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
+
 @app.exception_handler(Exception)
 async def global_handler(request: Request, exc: Exception):
     return JSONResponse(
         status_code=500,
-        content={"status": "error", "message": "Sunucu hatası. Lütfen tekrar deneyin."},
+        content={"detail": "Sunucu hatası. Lütfen tekrar deneyin."},
     )
 
 
@@ -84,6 +90,8 @@ async def inject_user(request: Request, call_next):
     """JWT varsa user'ı request.state'e ekle (plan kontrolü için)."""
     from app.routes.auth import decode_access
     auth = request.headers.get("Authorization", "")
+    if not auth and "access_token" in request.cookies:
+        auth = "Bearer " + request.cookies["access_token"]
     if auth.startswith("Bearer "):
         try:
             payload = decode_access(auth.split(" ", 1)[1])

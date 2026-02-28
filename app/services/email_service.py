@@ -146,11 +146,11 @@ def send_family_invite(to: str, inviter_name: str, invite_link: str) -> None:
     send_async(to, f"{inviter_name} sizi AutoTax.cloud'a davet etti", _base("Aile Planı Daveti", body))
 
 
-def send_password_reset(to: str, reset_link: str) -> None:
+def send_password_reset(to: str, reset_link: str) -> bool:
     body = f"""
     <p>Merhaba,</p>
     <p>AutoTax.cloud hesabınız için şifre sıfırlama talebinde bulundunuz.</p>
     <a class="btn" href="{reset_link}">Şifremi Sıfırla</a>
     <p><small>Bu bağlantı <strong>2 saat</strong> geçerlidir. Talebi siz yapmadıysanız bu e-postayı görmezden gelebilirsiniz.</small></p>"""
-    send_async(to, "Şifre Sıfırlama — AutoTax.cloud", _base("Şifre Sıfırlama", body))
+    return _send(to, "Şifre Sıfırlama — AutoTax.cloud", _base("Şifre Sıfırlama", body))
 
