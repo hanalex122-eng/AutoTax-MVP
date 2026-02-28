@@ -35,8 +35,7 @@ RUN mkdir -p storage/incoming storage/processed models
 ENV TESSERACT_CMD=/usr/bin/tesseract \
     DB_PATH=/app/storage/invoices_db.json \
     SQLITE_PATH=/app/storage/invoices.db \
-    PYTHONUNBUFFERED=1 \
-    PORT=8000
+    PYTHONUNBUFFERED=1
 
 EXPOSE 8000
 
