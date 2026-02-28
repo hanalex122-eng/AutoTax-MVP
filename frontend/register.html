@@ -257,8 +257,19 @@
       </div>
 
       <p class="terms">
-        Kaydolarak <a href="#">Kullanım Şartları</a>'nı ve <a href="#">Gizlilik Politikası</a>'nı kabul etmiş olursunuz.
+        Kaydolarak <a href="/privacy.html" target="_blank">Kullanım Şartları</a>'nı ve <a href="/privacy.html" target="_blank">Gizlilik Politikası</a>'nı kabul etmiş olursunuz.
       </p>
+
+      <!-- GDPR Onay Kutusu -->
+      <label style="display:flex;align-items:flex-start;gap:10px;margin-bottom:16px;cursor:pointer;font-size:13px;color:#475569;line-height:1.5">
+        <input type="checkbox" id="gdpr-consent" required style="margin-top:2px;width:16px;height:16px;flex-shrink:0;accent-color:#2563eb">
+        <span>
+          Kişisel verilerimin (e-posta, ad, fatura verileri) AutoTax.cloud tarafından
+          <a href="/privacy.html" target="_blank" style="color:#2563eb">Gizlilik Politikası</a>'na
+          uygun şekilde AB/GDPR kuralları çerçevesinde işlenmesini <strong>onaylıyorum</strong>.
+          Verilerimi istediğim zaman silebileceğimi biliyorum.
+        </span>
+      </label>
 
       <button type="submit" class="btn-primary" id="reg-btn">
         <span id="btn-text">Hesap Oluştur &amp; Başla</span>

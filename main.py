@@ -1,4 +1,5 @@
 import os
+import logging
 from fastapi import FastAPI, Request, Depends
 from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
@@ -14,6 +15,14 @@ from app.routes.admin import router as admin_router
 from app.routes.share  import router as share_router
 from app.routes.budget import router as budget_router
 from app.routes.tax    import router as tax_router
+
+# ── GDPR Uyumlu Loglama (PII içermez) ────────────────────
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    datefmt="%Y-%m-%dT%H:%M:%S",
+)
+logger = logging.getLogger("autotax")
 
 ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:8000").split(",")
 
@@ -91,6 +100,28 @@ app.include_router(tax_router,    prefix="/api", dependencies=[Depends(get_curre
 @app.get("/api/health")
 def health():
     return {"status": "ok", "version": "4.0.0"}
+
+
+# ── GDPR: Hesap Silme Endpoint'i ─────────────────────────
+from fastapi import HTTPException
+
+@app.delete("/api/user/delete-account", summary="GDPR hesap silme")
+async def delete_account(current_user: dict = Depends(get_current_user)):
+    """
+    Kullanıcının tüm verilerini (hesap + faturalar) kalıcı siler.
+    GDPR Madde 17 — Unutulma Hakkı.
+    """
+    from app.services.user_db     import delete_user
+    from app.services.invoice_db  import delete_user_invoices
+    user_id = current_user["id"]
+    try:
+        inv_count = delete_user_invoices(user_id)
+        delete_user(user_id)
+        logger.info("GDPR account_deleted invoices=%d", inv_count)  # PII yok
+        return {"status": "deleted", "invoices_removed": inv_count}
+    except Exception as e:
+        logger.error("GDPR delete_account failed: %s", type(e).__name__)
+        raise HTTPException(status_code=500, detail="Hesap silinemedi. Lütfen tekrar deneyin.")
 
 
 # PWA dosyaları root'ta erişilebilir olmalı (service worker scope için)

@@ -1250,6 +1250,40 @@ window.saveCurrencySetting = function() {
   if (curSel) curSel.value = cur;
 })();
 
+/* ─── GDPR: Hesap Silme ─────────────────────────────────── */
+document.getElementById("btnDeleteAccount")?.addEventListener("click", () => {
+  const modal = document.getElementById("deleteAccountModal");
+  if (modal) modal.style.display = "flex";
+});
+
+document.getElementById("btnDeleteCancel")?.addEventListener("click", () => {
+  const modal = document.getElementById("deleteAccountModal");
+  if (modal) modal.style.display = "none";
+});
+
+document.getElementById("btnDeleteConfirm")?.addEventListener("click", async () => {
+  const st  = document.getElementById("deleteStatus");
+  const btn = document.getElementById("btnDeleteConfirm");
+  if (btn) btn.disabled = true;
+  if (st)  st.textContent = "Siliniyor…";
+
+  try {
+    const res = await authFetch("/api/user/delete-account", { method: "DELETE" });
+    if (res && res.ok) {
+      if (st) st.textContent = "✅ Hesabınız silindi. Yönlendiriliyorsunuz…";
+      localStorage.clear();
+      setTimeout(() => { window.location.href = "/register.html"; }, 1500);
+    } else {
+      const d = res ? await res.json().catch(()=>({})) : {};
+      if (st) st.textContent = "❌ " + (d.detail || "Hata oluştu. Tekrar deneyin.");
+      if (btn) btn.disabled = false;
+    }
+  } catch(e) {
+    if (st)  st.textContent = "❌ Bağlantı hatası.";
+    if (btn) btn.disabled = false;
+  }
+});
+
 /* ─── KAMERA / EKRAN YAKALAMA ───────────────────────────────── */
 let _cameraStream   = null;
 let _qrScanInterval = null;

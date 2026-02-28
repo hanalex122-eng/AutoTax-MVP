@@ -526,6 +526,26 @@ def get_ledger(
     }
 
 
+# ── GDPR: Fatura Silme ────────────────────────────────────
+def delete_user_invoices(user_id: str) -> int:
+    """Kullanıcıya ait tüm faturaları sil. Silinen kayıt sayısını döndürür."""
+    with _LOCK:
+        with _conn() as c:
+            cur = c.execute("DELETE FROM invoices WHERE user_id=?", (user_id,))
+    return cur.rowcount
+
+
+def delete_invoice(invoice_id: str, user_id: str) -> bool:
+    """Tek fatura sil — user_id koşuluyla (başka kullanıcı silemez)."""
+    with _LOCK:
+        with _conn() as c:
+            cur = c.execute(
+                "DELETE FROM invoices WHERE id=? AND user_id=?",
+                (invoice_id, user_id)
+            )
+    return cur.rowcount > 0
+
+
 # Başlatma
 _init()
 

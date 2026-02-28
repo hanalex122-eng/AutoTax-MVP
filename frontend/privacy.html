@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gizlilik Politikası &amp; GDPR — AutoTax.cloud</title>
+  <link rel="icon" href="/favicon.ico" type="image/x-icon">
+  <style>
+    :root { --bg:#0f0f1a; --surface:#1e1e2e; --border:#2d2d3f; --text:#e2e8f0; --muted:#94a3b8; --primary:#2563eb; }
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family:'Segoe UI',system-ui,sans-serif; background:var(--bg); color:var(--text); line-height:1.7; }
+    .container { max-width:860px; margin:0 auto; padding:40px 20px 80px; }
+    .logo { display:flex; align-items:center; gap:12px; margin-bottom:36px; text-decoration:none; }
+    .logo-icon { font-size:28px; }
+    .logo-text { font-size:20px; font-weight:700; color:var(--text); }
+    h1 { font-size:28px; font-weight:700; margin-bottom:8px; color:#fff; }
+    .subtitle { color:var(--muted); font-size:14px; margin-bottom:36px; }
+    h2 { font-size:18px; font-weight:600; margin:32px 0 12px; color:#fff; border-left:3px solid var(--primary); padding-left:12px; }
+    h3 { font-size:15px; font-weight:600; margin:20px 0 8px; color:var(--text); }
+    p  { color:var(--muted); margin-bottom:12px; font-size:15px; }
+    ul { color:var(--muted); padding-left:20px; margin-bottom:12px; font-size:15px; }
+    ul li { margin-bottom:6px; }
+    .card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:20px 24px; margin-bottom:16px; }
+    .badge { display:inline-block; padding:3px 10px; border-radius:20px; font-size:12px; font-weight:600; margin-bottom:12px; }
+    .badge-green  { background:#16a34a22; color:#4ade80; border:1px solid #16a34a44; }
+    .badge-blue   { background:#2563eb22; color:#60a5fa; border:1px solid #2563eb44; }
+    .badge-yellow { background:#d97706,22; color:#fbbf24; border:1px solid #d9770644; }
+    table { width:100%; border-collapse:collapse; margin-bottom:16px; font-size:14px; }
+    th { text-align:left; padding:10px 14px; background:#13131f; color:var(--muted); font-weight:600; }
+    td { padding:10px 14px; border-top:1px solid var(--border); color:var(--muted); vertical-align:top; }
+    a  { color:var(--primary); }
+    .back-btn { display:inline-block; margin-bottom:24px; color:var(--muted); text-decoration:none; font-size:14px; }
+    .back-btn:hover { color:var(--text); }
+    .highlight { background:#2563eb15; border:1px solid #2563eb33; border-radius:8px; padding:14px 18px; margin-bottom:16px; font-size:14px; color:var(--text); }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <a href="/index.html" class="back-btn">← Uygulamaya dön</a>
+
+  <div class="logo">
+    <span class="logo-icon">📊</span>
+    <span class="logo-text">AutoTax.cloud</span>
+  </div>
+
+  <h1>Gizlilik Politikası &amp; GDPR Uyum Belgesi</h1>
+  <p class="subtitle">Son güncelleme: Şubat 2026 &nbsp;·&nbsp; Yürürlük: AB GDPR (2016/679) &amp; BDSG (Alman Federal Veri Koruma Kanunu)</p>
+
+  <div class="highlight">
+    <strong>Özet:</strong> Verileriniz yalnızca AB sınırları içindeki sunucularda (Railway/Almanya) saklanır.
+    Hiçbir zaman üçüncü taraflara satılmaz. İstediğiniz an silebilirsiniz.
+  </div>
+
+  <!-- 1. Veri Sorumlusu -->
+  <h2>1. Veri Sorumlusu</h2>
+  <div class="card">
+    <p><strong>AutoTax.cloud</strong><br>
+    E-posta: <a href="mailto:privacy@autotax.cloud">privacy@autotax.cloud</a><br>
+    GDPR Talebi: <a href="mailto:privacy@autotax.cloud">privacy@autotax.cloud</a>
+    </p>
+  </div>
+
+  <!-- 2. Toplanan Veriler -->
+  <h2>2. Toplanan Kişisel Veriler</h2>
+  <table>
+    <thead><tr><th>Veri Türü</th><th>Amaç</th><th>Dayanak (GDPR Md.6)</th><th>Saklama Süresi</th></tr></thead>
+    <tbody>
+      <tr><td>E-posta adresi, ad-soyad</td><td>Hesap oluşturma, kimlik doğrulama</td><td>Sözleşme ifası (6/1-b)</td><td>Hesap aktif olduğu sürece</td></tr>
+      <tr><td>Şifre (bcrypt hash)</td><td>Güvenli giriş</td><td>Sözleşme ifası (6/1-b)</td><td>Hesap aktif olduğu sürece</td></tr>
+      <tr><td>Fatura OCR verileri (tutar, tarih, satıcı, KDV)</td><td>Muhasebe otomasyonu</td><td>Sözleşme ifası (6/1-b)</td><td>7 yıl (Alman Handelsgesetzbuch §257)</td></tr>
+      <tr><td>Yüklenen fatura görselleri</td><td>OCR işlemi</td><td>Açık rıza (6/1-a) + meşru menfaat (6/1-f)</td><td>90 gün sonra otomatik silinir</td></tr>
+      <tr><td>IP adresi (log)</td><td>Güvenlik, hata ayıklama</td><td>Meşru menfaat (6/1-f)</td><td>30 gün, sonra anonim</td></tr>
+      <tr><td>Ödeme bilgileri</td><td>Abonelik</td><td>Sözleşme ifası (6/1-b)</td><td>Stripe tarafından saklanır (PCI-DSS)</td></tr>
+    </tbody>
+  </table>
+
+  <!-- 3. Sunucu Lokasyonu -->
+  <h2 id="server">3. Sunucu Lokasyonu &amp; Veri Transferi</h2>
+  <div class="card">
+    <span class="badge badge-green">✓ AB Sınırları İçinde</span>
+    <p>Tüm veriler <strong>Almanya / AB</strong> veri merkezlerinde saklanır (Railway.app — Frankfurt, Almanya).</p>
+    <p>AB dışına veri transferi yapılmaz. Kullanılan üçüncü taraf hizmetler:</p>
+    <ul>
+      <li><strong>Stripe</strong> (Ödeme) — AB veri işleme anlaşması (DPA) imzalanmış, SCCʼler geçerli</li>
+      <li><strong>Tesseract/OCR</strong> — Tamamen sunucu tarafı, dışarı gönderilmez</li>
+    </ul>
+  </div>
+
+  <!-- 4. GDPR Hakları -->
+  <h2>4. Haklarınız (GDPR Madde 15–22)</h2>
+  <table>
+    <thead><tr><th>Hak</th><th>Açıklama</th><th>Nasıl Kullanılır</th></tr></thead>
+    <tbody>
+      <tr><td>📋 Erişim (Md. 15)</td><td>Hangi verilerinizin tutulduğunu öğrenme</td><td><a href="mailto:privacy@autotax.cloud">privacy@autotax.cloud</a></td></tr>
+      <tr><td>✏️ Düzeltme (Md. 16)</td><td>Hatalı verilerin düzeltilmesi</td><td>Profil ayarları veya e-posta</td></tr>
+      <tr><td>🗑️ Silme (Md. 17)</td><td>Tüm verilerin silinmesi (Unutulma Hakkı)</td><td>Uygulama footer → "Hesabımı Sil"</td></tr>
+      <tr><td>📦 Taşınabilirlik (Md. 20)</td><td>Verilerinizi JSON/CSV olarak indirme</td><td>Muhasebe Defteri → Excel İndir</td></tr>
+      <tr><td>🚫 İtiraz (Md. 21)</td><td>İşlemeye itiraz</td><td><a href="mailto:privacy@autotax.cloud">privacy@autotax.cloud</a></td></tr>
+      <tr><td>⏸️ Kısıtlama (Md. 18)</td><td>İşlemenin durdurulması</td><td><a href="mailto:privacy@autotax.cloud">privacy@autotax.cloud</a></td></tr>
+    </tbody>
+  </table>
+  <p>Yanıt süresi: <strong>30 gün</strong>. Şikayet hakkınız: Alman Veri Koruma Otoritesi (<a href="https://www.bfdi.bund.de" target="_blank">BfDI</a>).</p>
+
+  <!-- 5. Log Yönetimi -->
+  <h2 id="logs">5. Log Yönetimi</h2>
+  <div class="card">
+    <span class="badge badge-blue">PII İçermez</span>
+    <ul>
+      <li>Loglar <strong>yapısal formatta</strong> tutulur: zaman, işlem tipi, hata kodu</li>
+      <li>E-posta, isim, fatura içeriği, IP adresi loglara <strong>yazılmaz</strong></li>
+      <li>Hata loglarında yalnızca <code>user_id</code> (UUID) ve hata tipi görünür</li>
+      <li>Log saklama süresi: <strong>30 gün</strong>, sonra otomatik silinir</li>
+      <li>Railway platformunun log tutma politikası: <a href="https://railway.app/legal/privacy" target="_blank">railway.app/legal/privacy</a></li>
+    </ul>
+  </div>
+
+  <!-- 6. Çerezler -->
+  <h2 id="cookies">6. Çerez Politikası</h2>
+  <table>
+    <thead><tr><th>Çerez / Storage</th><th>Tür</th><th>Amaç</th><th>Süre</th></tr></thead>
+    <tbody>
+      <tr><td><code>autotax_token</code> (localStorage)</td><td>Zorunlu</td><td>JWT kimlik doğrulama</td><td>7 gün</td></tr>
+      <tr><td><code>autotax_lang</code> (localStorage)</td><td>Tercih</td><td>Dil ayarı</td><td>Kalıcı (manuel silinir)</td></tr>
+      <tr><td><code>autotax_currency</code> (localStorage)</td><td>Tercih</td><td>Para birimi</td><td>Kalıcı (manuel silinir)</td></tr>
+    </tbody>
+  </table>
+  <p>Üçüncü taraf izleme çerezi (<strong>Google Analytics, Facebook Pixel vb.</strong>) kullanılmaz.</p>
+
+  <!-- 7. Kullanım Şartları -->
+  <h2 id="terms">7. Kullanım Şartları (Özet)</h2>
+  <div class="card">
+    <ul>
+      <li>Hizmet <strong>"olduğu gibi"</strong> sunulur; muhasebe tavsiyesi değildir, resmi danışman kullanın.</li>
+      <li>Hesap başkasıyla paylaşılamaz; şüpheli kullanımda hesap askıya alınabilir.</li>
+      <li>Abonelik iptali ayın sonuna kadar geçerli olur; kalan süre iade edilmez.</li>
+      <li>Yasa dışı içerik (sahte fatura vb.) yüklemek yasaktır ve hesap kapatılır.</li>
+      <li>Servis kesintilerinden doğan zarardan sorumluluk kabul edilmez.</li>
+    </ul>
+  </div>
+
+  <!-- 8. Veri İhlali -->
+  <h2>8. Veri İhlali Bildirimi</h2>
+  <p>GDPR Madde 33 uyarınca bir veri ihlali tespit edilmesi halinde <strong>72 saat</strong> içinde ilgili denetim otoritesine ve etkilenen kullanıcılara bildirim yapılır.</p>
+
+  <!-- 9. Değişiklikler -->
+  <h2>9. Politika Değişiklikleri</h2>
+  <p>Politika değişiklikleri e-posta ve uygulama içi bildirimle duyurulur. Önemli değişikliklerde yeniden onay istenir.</p>
+
+  <br>
+  <p style="font-size:13px;color:var(--muted)">
+    Sorularınız için: <a href="mailto:privacy@autotax.cloud">privacy@autotax.cloud</a>
+  </p>
+
+</div>
+</body>
+</html>

@@ -394,4 +394,16 @@ def revoke_share_token(token: str, user_id: str) -> bool:
     return True
 
 
+# ── GDPR: Hesap & Veri Silme ──────────────────────────────
+def delete_user(user_id: str) -> bool:
+    """Kullanıcıyı ve tüm ilgili verilerini kalıcı olarak sil (Right to be Forgotten)."""
+    with _LOCK:
+        with _conn() as c:
+            c.execute("DELETE FROM refresh_tokens    WHERE user_id=?", (user_id,))
+            c.execute("DELETE FROM accountant_shares WHERE user_id=?", (user_id,))
+            c.execute("DELETE FROM family_invites    WHERE email=(SELECT email FROM users WHERE id=?)", (user_id,))
+            c.execute("DELETE FROM users             WHERE id=?",      (user_id,))
+    return True
+
+
 _init()
