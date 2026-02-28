@@ -35,6 +35,24 @@ app = FastAPI(
     openapi_url="/api/openapi.json",
 )
 
+# ── GDPR: 90 Günlük Otomatik Dosya Temizliği ─────────────
+# privacy.html taahhüdünü gerçekleştiren scheduler
+try:
+    from apscheduler.schedulers.background import BackgroundScheduler
+    _scheduler = BackgroundScheduler()
+
+    def _gdpr_purge_job():
+        from app.services.invoice_db import purge_old_invoice_files
+        count = purge_old_invoice_files(days=90)
+        if count:
+            logger.info("GDPR purge_old_files removed=%d", count)
+
+    _scheduler.add_job(_gdpr_purge_job, "cron", hour=3, minute=0)  # her gece 03:00
+    _scheduler.start()
+    logger.info("GDPR scheduler started (daily 03:00 purge)")
+except ImportError:
+    logger.warning("apscheduler not installed — GDPR 90-day purge disabled")
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,

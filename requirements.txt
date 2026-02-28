@@ -30,5 +30,8 @@ openpyxl
 # Stripe ödeme
 stripe>=7.0.0
 
+# GDPR: 90 günlük otomatik dosya temizliği
+APScheduler>=3.10.0
+
 # Rate limiting (opsiyonel - Railway'de ayrıca eklenebilir)
 # redis

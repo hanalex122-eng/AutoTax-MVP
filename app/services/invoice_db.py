@@ -527,10 +527,26 @@ def get_ledger(
 
 
 # ── GDPR: Fatura Silme ────────────────────────────────────
+def _unlink_file(filename: str) -> None:
+    """Dosyayı diskten güvenli şekilde sil (hata olursa sessizce geç)."""
+    if not filename:
+        return
+    try:
+        Path(filename).unlink(missing_ok=True)
+    except Exception:
+        pass
+
+
 def delete_user_invoices(user_id: str) -> int:
-    """Kullanıcıya ait tüm faturaları sil. Silinen kayıt sayısını döndürür."""
+    """Kullanıcıya ait tüm faturaları ve dosyalarını sil. Silinen kayıt sayısını döndürür."""
     with _LOCK:
         with _conn() as c:
+            # GDPR Madde 17: önce dosya yollarını al, sonra diskten sil
+            rows = c.execute(
+                "SELECT filename FROM invoices WHERE user_id=?", (user_id,)
+            ).fetchall()
+            for row in rows:
+                _unlink_file(row[0])
             cur = c.execute("DELETE FROM invoices WHERE user_id=?", (user_id,))
     return cur.rowcount
 
@@ -539,11 +555,39 @@ def delete_invoice(invoice_id: str, user_id: str) -> bool:
     """Tek fatura sil — user_id koşuluyla (başka kullanıcı silemez)."""
     with _LOCK:
         with _conn() as c:
+            row = c.execute(
+                "SELECT filename FROM invoices WHERE id=? AND user_id=?",
+                (invoice_id, user_id)
+            ).fetchone()
+            if not row:
+                return False
+            _unlink_file(row[0])
             cur = c.execute(
                 "DELETE FROM invoices WHERE id=? AND user_id=?",
                 (invoice_id, user_id)
             )
     return cur.rowcount > 0
+
+
+def purge_old_invoice_files(days: int = 90) -> int:
+    """
+    90 günden eski fatura görsellerini diskten sil, DB kaydını koru.
+    (privacy.html taahhüdünü yerine getirir — GDPR veri minimizasyonu Md.5/1-e)
+    """
+    from datetime import timedelta
+    cutoff = (datetime.utcnow() - timedelta(days=days)).isoformat()
+    with _LOCK:
+        with _conn() as c:
+            rows = c.execute(
+                "SELECT id, filename FROM invoices WHERE created_at < ? AND filename IS NOT NULL",
+                (cutoff,)
+            ).fetchall()
+            count = 0
+            for row in rows:
+                _unlink_file(row[1])
+                c.execute("UPDATE invoices SET filename=NULL WHERE id=?", (row[0],))
+                count += 1
+    return count
 
 
 # Başlatma

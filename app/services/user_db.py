@@ -399,10 +399,20 @@ def delete_user(user_id: str) -> bool:
     """Kullanıcıyı ve tüm ilgili verilerini kalıcı olarak sil (Right to be Forgotten)."""
     with _LOCK:
         with _conn() as c:
+            # refresh token'ları temizle
             c.execute("DELETE FROM refresh_tokens    WHERE user_id=?", (user_id,))
+            # muhasebeci paylaşım token'larını temizle
             c.execute("DELETE FROM accountant_shares WHERE user_id=?", (user_id,))
-            c.execute("DELETE FROM family_invites    WHERE email=(SELECT email FROM users WHERE id=?)", (user_id,))
-            c.execute("DELETE FROM users             WHERE id=?",      (user_id,))
+            # aile davetleri: hem alınan (email) hem gönderilen (invited_by) davetler
+            # NOT: subquery users tablosuna bakıyor; users'ı SİLMEDEN ÖNCE çalıştırılmalı
+            c.execute(
+                "DELETE FROM family_invites WHERE invited_by=? OR email=("
+                "  SELECT email FROM users WHERE id=?"
+                ")",
+                (user_id, user_id)
+            )
+            # son olarak kullanıcıyı sil
+            c.execute("DELETE FROM users WHERE id=?", (user_id,))
     return True
 
 
