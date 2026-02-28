@@ -20,6 +20,7 @@ _SMTP_FROM = os.getenv("SMTP_FROM", _SMTP_USER)
 _APP_URL   = os.getenv("APP_URL", "https://autotax.cloud")
 
 _CONFIGURED = bool(_SMTP_USER and _SMTP_PASS)
+SMTP_CONFIGURED = _CONFIGURED
 
 
 def _send(to: str, subject: str, html: str, text: str = "") -> bool:

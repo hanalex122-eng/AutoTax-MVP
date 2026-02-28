@@ -1,6 +1,6 @@
 import os
 import logging
-from fastapi import FastAPI, Request, Depends
+from fastapi import FastAPI, Request, Depends, HTTPException
 from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
@@ -42,10 +42,13 @@ try:
     _scheduler = BackgroundScheduler()
 
     def _gdpr_purge_job():
-        from app.services.invoice_db import purge_old_invoice_files
-        count = purge_old_invoice_files(days=90)
-        if count:
-            logger.info("GDPR purge_old_files removed=%d", count)
+        try:
+            from app.services.invoice_db import purge_old_invoice_files
+            count = purge_old_invoice_files(days=90)
+            if count:
+                logger.info("GDPR purge_old_files removed=%d", count)
+        except Exception as e:
+            logger.error("GDPR purge job failed: %s", type(e).__name__)
 
     _scheduler.add_job(_gdpr_purge_job, "cron", hour=3, minute=0)  # her gece 03:00
     _scheduler.start()
@@ -71,10 +74,8 @@ async def validation_handler(request: Request, exc: RequestValidationError):
     )
 
 
-from fastapi import HTTPException as FastAPIHTTPException
-
-@app.exception_handler(FastAPIHTTPException)
-async def http_exception_handler(request: Request, exc: FastAPIHTTPException):
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
     return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
 
 @app.exception_handler(Exception)
@@ -129,8 +130,6 @@ def health():
 
 
 # ── GDPR: Hesap Silme Endpoint'i ─────────────────────────
-from fastapi import HTTPException
-
 @app.delete("/api/user/delete-account", summary="GDPR hesap silme")
 async def delete_account(current_user: dict = Depends(get_current_user)):
     """

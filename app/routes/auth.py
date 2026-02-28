@@ -249,11 +249,11 @@ def forgot_password(data: ForgotIn):
     E-posta varsa reset linki gönder.
     Güvenlik için: kullanıcı var/yok fark etmeksizin aynı mesaj döner.
     """
+    from app.services.email_service import send_password_reset, SMTP_CONFIGURED
+    if not SMTP_CONFIGURED:
+        raise HTTPException(status_code=503, detail="E-posta servisi yapılandırılmamış. Lütfen destek ekibiyle iletişime geçin: privacy@autotax.cloud")
     token = create_password_reset_token(data.email)
     if token:
-        from app.services.email_service import send_password_reset, _CONFIGURED as smtp_ok
-        if not smtp_ok:
-            raise HTTPException(status_code=503, detail="E-posta servisi yapılandırılmamış. Lütfen destek ekibiyle iletişime geçin: privacy@autotax.cloud")
         app_url = os.getenv("APP_URL", "https://autotax-mvp-production-e878.up.railway.app")
         reset_link = f"{app_url}/reset-password.html?token={token}"
         sent = send_password_reset(data.email, reset_link)
