@@ -1,0 +1,48 @@
+# Geliştirme veritabanları ve test dosyaları
+storage/
+*.db
+*.db-shm
+*.db-wal
+
+# Ortam dosyaları
+.env
+.env.*
+!.env.example
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+
+# Git
+.git/
+.gitignore
+
+# Test ve geliştirme araçları
+_test_*.py
+_cleanup.py
+*.test.py
+tests/
+
+# Editör dosyaları
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS dosyaları
+.DS_Store
+Thumbs.db
+
+# Log dosyaları
+*.log
+logs/
+
+# Docker
+docker-compose*.yml
+nginx.conf
