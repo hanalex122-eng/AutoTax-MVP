@@ -35,10 +35,9 @@ RUN mkdir -p storage/incoming storage/processed models
 ENV TESSERACT_CMD=/usr/bin/tesseract \
     DB_PATH=/app/storage/invoices_db.json \
     SQLITE_PATH=/app/storage/invoices.db \
-    REDIS_HOST=localhost \
-    REDIS_PORT=6379 \
-    PYTHONUNBUFFERED=1
+    PYTHONUNBUFFERED=1 \
+    PORT=8000
 
 EXPOSE 8000
 
-CMD uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 1 --proxy-headers --forwarded-allow-ips "*"
+CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000} --workers 1 --proxy-headers"]
