@@ -1250,3 +1250,118 @@ window.saveCurrencySetting = function() {
   if (curSel) curSel.value = cur;
 })();
 
+/* ─── KAMERA / EKRAN YAKALAMA ───────────────────────────────── */
+let _cameraStream = null;
+
+async function _uploadBlob(blob, filename) {
+  const fd = new FormData();
+  fd.append("file", blob, filename);
+  showToast("📤 Yükleniyor…");
+  try {
+    const res = await authFetch("/api/ocr/upload", { method: "POST", body: fd });
+    if (!res) return;
+    const d = await res.json();
+    if (res.ok) {
+      showToast("✅ " + (d.vendor || "Fatura") + " — " + (d.total ?? "") + " OCR tamam");
+      loadInvoices();
+    } else {
+      showToast("❌ " + (d.detail || "Yükleme hatası"));
+    }
+  } catch(e) {
+    showToast("❌ Bağlantı hatası");
+  }
+}
+
+function _stopCamera() {
+  if (_cameraStream) { _cameraStream.getTracks().forEach(t => t.stop()); _cameraStream = null; }
+  const modal = document.getElementById("cameraModal");
+  if (modal) modal.style.display = "none";
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+
+  /* Kamera */
+  document.getElementById("btnCamera")?.addEventListener("click", async () => {
+    const modal = document.getElementById("cameraModal");
+    const video = document.getElementById("cameraVideo");
+    if (!modal || !video) return;
+    try {
+      _cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false });
+      video.srcObject = _cameraStream;
+      modal.style.display = "flex";
+    } catch(e) {
+      showToast("❌ Kamera erişimi reddedildi: " + e.message);
+    }
+  });
+
+  document.getElementById("btnCapture")?.addEventListener("click", () => {
+    const video  = document.getElementById("cameraVideo");
+    const canvas = document.getElementById("cameraCanvas");
+    if (!video || !canvas) return;
+    canvas.width  = video.videoWidth;
+    canvas.height = video.videoHeight;
+    canvas.getContext("2d").drawImage(video, 0, 0);
+    _stopCamera();
+    canvas.toBlob(blob => {
+      if (blob) _uploadBlob(blob, "kamera_" + Date.now() + ".jpg");
+    }, "image/jpeg", 0.92);
+  });
+
+  document.getElementById("btnCameraClose")?.addEventListener("click", _stopCamera);
+
+  /* Ekran görüntüsü */
+  document.getElementById("btnScreen")?.addEventListener("click", async () => {
+    try {
+      const stream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+      const track  = stream.getVideoTracks()[0];
+      const ic     = new ImageCapture(track);
+      const bmp    = await ic.grabFrame();
+      track.stop();
+      const canvas = document.createElement("canvas");
+      canvas.width  = bmp.width;
+      canvas.height = bmp.height;
+      canvas.getContext("2d").drawImage(bmp, 0, 0);
+      canvas.toBlob(blob => {
+        if (blob) _uploadBlob(blob, "ekran_" + Date.now() + ".png");
+      }, "image/png");
+    } catch(e) {
+      showToast("❌ Ekran yakalama iptal edildi veya desteklenmiyor");
+    }
+  });
+
+  /* QR kod — kameradan QR okuma (BarcodeDetector API) */
+  document.getElementById("btnQR")?.addEventListener("click", async () => {
+    if (!("BarcodeDetector" in window)) {
+      showToast("⚠️ Tarayıcınız QR okumayı desteklemiyor. Faturayı fotoğraf olarak yükleyin.");
+      return;
+    }
+    const modal = document.getElementById("cameraModal");
+    const video = document.getElementById("cameraVideo");
+    if (!modal || !video) return;
+    try {
+      _cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false });
+      video.srcObject = _cameraStream;
+      modal.style.display = "flex";
+      showToast("🔲 QR kodu kameraya gösterin, otomatik algılanacak…");
+      const detector = new BarcodeDetector({ formats: ["qr_code"] });
+      const scan = setInterval(async () => {
+        try {
+          const codes = await detector.detect(video);
+          if (codes.length > 0) {
+            clearInterval(scan);
+            const qrValue = codes[0].rawValue;
+            _stopCamera();
+            showToast("✅ QR okundu: " + qrValue.substring(0, 60));
+            const blob = new Blob([JSON.stringify({ qr_content: qrValue, scanned_at: new Date().toISOString() })], { type: "application/json" });
+            _uploadBlob(blob, "qr_" + Date.now() + ".json");
+          }
+        } catch(_) {}
+      }, 500);
+      setTimeout(() => { clearInterval(scan); _stopCamera(); }, 30000);
+    } catch(e) {
+      showToast("❌ Kamera erişimi reddedildi: " + e.message);
+    }
+  });
+
+});
+
