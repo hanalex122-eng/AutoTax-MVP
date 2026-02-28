@@ -1252,9 +1252,17 @@ window.saveCurrencySetting = function() {
 
 /* ─── KAMERA / EKRAN YAKALAMA ───────────────────────────────── */
 let _cameraStream   = null;
-let _qrScanInterval = null;  // FIX: interval sızıntısını önlemek için modül düzeyinde
+let _qrScanInterval = null;
+
+const _UPLOAD_MAX_MB    = 10;
+const _ALLOWED_MIME     = ["image/jpeg","image/png","image/tiff","image/webp","application/pdf"];
 
 async function _uploadBlob(blob, filename) {
+  // P3-FIX: boyut kontrolü — 10 MB üstü yükleme
+  if (blob.size > _UPLOAD_MAX_MB * 1024 * 1024) {
+    showToast(`❌ Dosya çok büyük (maks ${_UPLOAD_MAX_MB} MB). Ekranı küçültüp tekrar deneyin.`);
+    return;
+  }
   const fd = new FormData();
   fd.append("file", blob, filename);
   showToast("📤 Yükleniyor…");
@@ -1274,7 +1282,6 @@ async function _uploadBlob(blob, filename) {
 }
 
 function _stopCamera() {
-  // FIX: interval'i burada da temizle (QR modu için)
   if (_qrScanInterval) { clearInterval(_qrScanInterval); _qrScanInterval = null; }
   if (_cameraStream)   { _cameraStream.getTracks().forEach(t => t.stop()); _cameraStream = null; }
   const modal = document.getElementById("cameraModal");
@@ -1285,22 +1292,24 @@ document.addEventListener("DOMContentLoaded", () => {
 
   /* Kamera */
   document.getElementById("btnCamera")?.addEventListener("click", async () => {
-    const modal = document.getElementById("cameraModal");  // FIX: yerel referans
-    const video = document.getElementById("cameraVideo");  // FIX: yerel referans
+    const modal = document.getElementById("cameraModal");
+    const video = document.getElementById("cameraVideo");
     if (!modal || !video) return;
+    // P2-FIX: eşzamanlı açılmayı önle — varsa önce temizle
+    if (_cameraStream) _stopCamera();
     try {
       _cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false });
       video.srcObject = _cameraStream;
       modal.style.display = "flex";
     } catch(e) {
       _stopCamera();
-      showToast("❌ Kamera erişimi reddedildi: " + e.message);  // FIX: try/catch
+      showToast("❌ Kamera erişimi reddedildi: " + e.message);
     }
   });
 
   document.getElementById("btnCapture")?.addEventListener("click", () => {
-    const video  = document.getElementById("cameraVideo");   // FIX: yerel referans
-    const canvas = document.getElementById("cameraCanvas");  // FIX: yerel referans
+    const video  = document.getElementById("cameraVideo");
+    const canvas = document.getElementById("cameraCanvas");
     if (!video || !canvas) return;
     canvas.width  = video.videoWidth;
     canvas.height = video.videoHeight;
@@ -1313,17 +1322,21 @@ document.addEventListener("DOMContentLoaded", () => {
 
   document.getElementById("btnCameraClose")?.addEventListener("click", _stopCamera);
 
-  /* Ekran görüntüsü — FIX: ImageCapture yerine video+canvas (Firefox/Safari uyumlu) */
+  /* Ekran görüntüsü — video+canvas yöntemi (Firefox/Safari uyumlu) */
   document.getElementById("btnScreen")?.addEventListener("click", async () => {
     try {
-      const stream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+      const stream   = await navigator.mediaDevices.getDisplayMedia({ video: true });
       const tmpVideo = document.createElement("video");
       tmpVideo.srcObject = stream;
       tmpVideo.muted = true;
       await tmpVideo.play();
+      // P1-FIX: video boyutları play() sonrası hazır olmayabilir — loadedmetadata bekle
+      if (tmpVideo.readyState < 2) {
+        await new Promise(r => { tmpVideo.onloadedmetadata = r; });
+      }
       const canvas = document.createElement("canvas");
-      canvas.width  = tmpVideo.videoWidth;
-      canvas.height = tmpVideo.videoHeight;
+      canvas.width  = tmpVideo.videoWidth  || 1280;
+      canvas.height = tmpVideo.videoHeight || 720;
       canvas.getContext("2d").drawImage(tmpVideo, 0, 0);
       stream.getTracks().forEach(t => t.stop());
       tmpVideo.srcObject = null;
@@ -1331,11 +1344,11 @@ document.addEventListener("DOMContentLoaded", () => {
         if (blob) _uploadBlob(blob, "ekran_" + Date.now() + ".png");
       }, "image/png");
     } catch(e) {
-      showToast("❌ Ekran yakalama iptal edildi: " + e.message);  // FIX: try/catch
+      showToast("❌ Ekran yakalama iptal edildi: " + e.message);
     }
   });
 
-  /* QR kod — FIX: JSON blob değil, kamera çerçevesini JPEG olarak gönder */
+  /* QR kod — kamera çerçevesini JPEG olarak gönder */
   document.getElementById("btnQR")?.addEventListener("click", async () => {
     if (!("BarcodeDetector" in window)) {
       showToast("⚠️ Tarayıcınız QR okumayı desteklemiyor. Faturayı fotoğraf olarak yükleyin.");
@@ -1344,35 +1357,39 @@ document.addEventListener("DOMContentLoaded", () => {
     const modal = document.getElementById("cameraModal");
     const video = document.getElementById("cameraVideo");
     if (!modal || !video) return;
+    // P2-FIX: eşzamanlı açılmayı önle
+    if (_cameraStream) _stopCamera();
     try {
       _cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" }, audio: false });
       video.srcObject = _cameraStream;
       modal.style.display = "flex";
       showToast("🔲 QR kodu kameraya gösterin, otomatik algılanacak…");
       const detector = new BarcodeDetector({ formats: ["qr_code"] });
-      // FIX: interval ID modül değişkeninde saklanıyor → _stopCamera() onu da temizler
       _qrScanInterval = setInterval(async () => {
         try {
           const codes = await detector.detect(video);
           if (codes.length > 0) {
             const qrValue = codes[0].rawValue;
-            // FIX: QR okunduktan sonra kamera çerçevesini JPEG olarak yükle (JSON değil)
-            const canvas = document.createElement("canvas");
+            const canvas  = document.createElement("canvas");
             canvas.width  = video.videoWidth;
             canvas.height = video.videoHeight;
             canvas.getContext("2d").drawImage(video, 0, 0);
-            _stopCamera();  // interval + stream birlikte temizlenir
+            _stopCamera();
             showToast("✅ QR okundu: " + qrValue.substring(0, 60));
             canvas.toBlob(blob => {
               if (blob) _uploadBlob(blob, "qr_" + Date.now() + ".jpg");
             }, "image/jpeg", 0.92);
           }
-        } catch(_) {}
+        } catch(err) {
+          // P3-FIX: stream kesilirse interval'i durdur
+          _stopCamera();
+          showToast("⚠️ QR tarama durdu: " + (err.message || "bağlantı kesildi"));
+        }
       }, 500);
       setTimeout(() => { if (_qrScanInterval) _stopCamera(); }, 30000);
     } catch(e) {
       _stopCamera();
-      showToast("❌ Kamera erişimi reddedildi: " + e.message);  // FIX: try/catch
+      showToast("❌ Kamera erişimi reddedildi: " + e.message);
     }
   });
 
@@ -1387,11 +1404,18 @@ document.addEventListener("DOMContentLoaded", () => {
     if (modal) modal.style.display = "none";
   });
 
-  // Windows Faks ve Tarama uygulamasını açmaya yönlendir
+  // P2-FIX: platform kontrolü — ms-photos: sadece Windows'ta çalışır
   document.getElementById("btnScannerWinScan")?.addEventListener("click", () => {
-    showToast("🪟 Windows Tarama açılıyor… (wfs:// protokolü)");
+    const isWindows = /Win/i.test(navigator.userAgent);
+    if (!isWindows) {
+      showToast("⚠️ Bu buton yalnızca Windows'ta çalışır. Mac için 'Image Capture' uygulamasını kullanın.");
+      const st = document.getElementById("scannerUploadStatus");
+      if (st) st.textContent = "Mac: Launchpad → Image Capture → Tara → dosyayı kaydet → yukarıdan yükle.";
+      return;
+    }
+    showToast("🪟 Windows Fotoğraflar açılıyor…");
     const a = document.createElement("a");
-    a.href = "ms-photos:";   // MS Photos'un import from scanner özelliği
+    a.href = "ms-photos:";
     a.click();
     setTimeout(() => {
       const st = document.getElementById("scannerUploadStatus");
@@ -1399,15 +1423,28 @@ document.addEventListener("DOMContentLoaded", () => {
     }, 1500);
   });
 
-  // Tarayıcı dosya seçme input'u — seçilince otomatik OCR'a gönder
+  // Tarayıcı dosya input'u — P2-FIX: MIME whitelist kontrolü eklendi
   document.getElementById("scannerFileInput")?.addEventListener("change", async (e) => {
-    const files = Array.from(e.target.files || []);
+    const all   = Array.from(e.target.files || []);
+    if (!all.length) return;
+
+    // MIME/uzantı whitelist filtresi
+    const files   = all.filter(f => _ALLOWED_MIME.includes(f.type));
+    const blocked = all.length - files.length;
+    if (blocked > 0) showToast(`⚠️ ${blocked} desteklenmeyen dosya atlandı`);
     if (!files.length) return;
+
     const st = document.getElementById("scannerUploadStatus");
     if (st) st.textContent = `${files.length} dosya OCR'a gönderiliyor…`;
 
     let ok = 0, fail = 0;
     for (const f of files) {
+      // P3-FIX: dosya boyutu kontrolü
+      if (f.size > _UPLOAD_MAX_MB * 1024 * 1024) {
+        showToast(`❌ ${f.name} çok büyük (maks ${_UPLOAD_MAX_MB} MB), atlandı`);
+        fail++;
+        continue;
+      }
       const fd = new FormData();
       fd.append("file", f, f.name);
       try {
@@ -1418,10 +1455,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
     if (st) st.textContent = `✅ ${ok} fatura işlendi${fail ? ` | ❌ ${fail} hata` : ""}.`;
     showToast(`📠 Tarayıcı: ${ok} fatura OCR'a aktarıldı`);
-    e.target.value = "";   // input'u sıfırla (aynı dosya tekrar seçilebilsin)
+    e.target.value = "";
     loadInvoices();
 
-    // Modal'ı 2 saniye sonra kapat
     setTimeout(() => {
       const modal = document.getElementById("scannerModal");
       if (modal) modal.style.display = "none";
