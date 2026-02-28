@@ -219,11 +219,46 @@
         </div>
       </div>
 
-      <!-- Kamera / Ekran yakalama butonları -->
+      <!-- Kamera / Ekran / Tarayıcı butonları -->
       <div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap">
-        <button id="btnCamera" class="btn btn-outline" title="Kamera ile çek">📷 Kamera ile Çek</button>
-        <button id="btnScreen" class="btn btn-outline" title="Ekran görüntüsü al">🖥️ Ekran Görüntüsü</button>
-        <button id="btnQR"     class="btn btn-outline" title="QR kod oku">🔲 QR Kod Oku</button>
+        <button id="btnCamera"  class="btn btn-outline" title="Kamera ile çek">📷 Kamera ile Çek</button>
+        <button id="btnScreen"  class="btn btn-outline" title="Ekran görüntüsü al">🖥️ Ekran Görüntüsü</button>
+        <button id="btnQR"      class="btn btn-outline" title="QR kod oku">🔲 QR Kod Oku</button>
+        <button id="btnScanner" class="btn btn-outline" title="Tarayıcıdan yükle" style="border-color:#a78bfa;color:#a78bfa">📠 Tarayıcı Bağla</button>
+      </div>
+
+      <!-- Tarayıcı yardım modalı -->
+      <div id="scannerModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9999;align-items:center;justify-content:center">
+        <div style="background:#1e1e2e;border-radius:16px;padding:28px;max-width:560px;width:95%">
+          <h3 style="margin:0 0 16px;color:#a78bfa;font-size:18px">📠 Tarayıcı ile Fatura Yükle</h3>
+          <p style="color:#ccc;margin:0 0 12px;font-size:14px">Fiziksel tarayıcınızı bilgisayarınızın tarama uygulamasıyla kullanıp çıktıyı buraya yükleyin:</p>
+
+          <div style="background:#13131f;border-radius:10px;padding:16px;margin-bottom:16px">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+              <span style="background:#a78bfa;color:#fff;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0">1</span>
+              <span style="color:#ddd;font-size:14px"><strong>Windows:</strong> Başlat → "Windows Faks ve Tarama" → Yeni Tarama → PDF veya JPG olarak kaydet</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+              <span style="background:#a78bfa;color:#fff;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0">2</span>
+              <span style="color:#ddd;font-size:14px"><strong>Mac:</strong> "Image Capture" uygulaması → Tara → PDF/JPG kaydet</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px">
+              <span style="background:#a78bfa;color:#fff;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0">3</span>
+              <span style="color:#ddd;font-size:14px">Kaydedilen dosyayı aşağıdaki "Tarama Dosyası Seç" butonuyla yükleyin</span>
+            </div>
+          </div>
+
+          <!-- Tarayıcı çıktısı için gizli input — PDF de kabul eder, yüksek DPI -->
+          <input type="file" id="scannerFileInput" multiple accept="image/*,.pdf" style="display:none">
+
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <label for="scannerFileInput" class="btn btn-primary" style="cursor:pointer;background:#a78bfa;border-color:#a78bfa">📁 Tarama Dosyası Seç</label>
+            <button id="btnScannerWinScan" class="btn btn-outline" style="border-color:#a78bfa;color:#a78bfa" title="Windows Faks ve Tarama aç">🪟 Windows Tarama Aç</button>
+            <button id="btnScannerClose" class="btn btn-outline">Kapat</button>
+          </div>
+
+          <div id="scannerUploadStatus" style="margin-top:12px;font-size:13px;color:#888"></div>
+        </div>
       </div>
 
       <!-- Kamera önizleme modalı -->

@@ -1376,5 +1376,57 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 
+  /* ── TARAYICI (Scanner) ────────────────────────────────────── */
+  document.getElementById("btnScanner")?.addEventListener("click", () => {
+    const modal = document.getElementById("scannerModal");
+    if (modal) modal.style.display = "flex";
+  });
+
+  document.getElementById("btnScannerClose")?.addEventListener("click", () => {
+    const modal = document.getElementById("scannerModal");
+    if (modal) modal.style.display = "none";
+  });
+
+  // Windows Faks ve Tarama uygulamasını açmaya yönlendir
+  document.getElementById("btnScannerWinScan")?.addEventListener("click", () => {
+    showToast("🪟 Windows Tarama açılıyor… (wfs:// protokolü)");
+    const a = document.createElement("a");
+    a.href = "ms-photos:";   // MS Photos'un import from scanner özelliği
+    a.click();
+    setTimeout(() => {
+      const st = document.getElementById("scannerUploadStatus");
+      if (st) st.textContent = "Taramayı tamamladıktan sonra 'Tarama Dosyası Seç' ile yükleyin.";
+    }, 1500);
+  });
+
+  // Tarayıcı dosya seçme input'u — seçilince otomatik OCR'a gönder
+  document.getElementById("scannerFileInput")?.addEventListener("change", async (e) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+    const st = document.getElementById("scannerUploadStatus");
+    if (st) st.textContent = `${files.length} dosya OCR'a gönderiliyor…`;
+
+    let ok = 0, fail = 0;
+    for (const f of files) {
+      const fd = new FormData();
+      fd.append("file", f, f.name);
+      try {
+        const res = await authFetch("/api/ocr/upload", { method: "POST", body: fd });
+        if (res && res.ok) { ok++; } else { fail++; }
+      } catch(_) { fail++; }
+    }
+
+    if (st) st.textContent = `✅ ${ok} fatura işlendi${fail ? ` | ❌ ${fail} hata` : ""}.`;
+    showToast(`📠 Tarayıcı: ${ok} fatura OCR'a aktarıldı`);
+    e.target.value = "";   // input'u sıfırla (aynı dosya tekrar seçilebilsin)
+    loadInvoices();
+
+    // Modal'ı 2 saniye sonra kapat
+    setTimeout(() => {
+      const modal = document.getElementById("scannerModal");
+      if (modal) modal.style.display = "none";
+    }, 2000);
+  });
+
 });
 
