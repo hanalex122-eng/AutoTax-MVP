@@ -18,13 +18,8 @@ from app.services.user_db import (
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
-# ── JWT config (env'den çek, production'da zorunlu) ───────
-JWT_SECRET = os.getenv("JWT_SECRET")
-if not JWT_SECRET:
-    import sys
-    if os.getenv("ENV", "production") == "production":
-        raise RuntimeError("JWT_SECRET environment variable is not set!")
-    JWT_SECRET = "dev_only_secret_do_not_use_in_production"
+# ── JWT config ────────────────────────────────────────────
+JWT_SECRET = os.getenv("JWT_SECRET", "autotax_default_secret_change_in_production_2026")
 JWT_ALGORITHM   = "HS256"
 ACCESS_TTL_MIN  = int(os.getenv("JWT_ACCESS_TTL_MIN", "60"))    # 1 saat
 REFRESH_TTL_DAY = int(os.getenv("JWT_REFRESH_TTL_DAYS", "30"))  # 30 gün
@@ -250,16 +245,19 @@ class ResetIn(BaseModel):
 # ── Şifremi Unuttum ───────────────────────────────────────
 @router.post("/forgot-password", status_code=200)
 def forgot_password(data: ForgotIn):
-    """
-    E-posta varsa reset linki gönder.
-    Güvenlik için: kullanıcı var/yok fark etmeksizin aynı mesaj döner.
-    """
+    from app.services.email_service import send_password_reset, _CONFIGURED as smtp_ok
     token = create_password_reset_token(data.email)
     if token:
-        from app.services.email_service import send_password_reset
-        app_url = os.getenv("APP_URL", "https://autotax-mvp-production-74be.up.railway.app")
+        if not smtp_ok:
+            raise HTTPException(
+                status_code=503,
+                detail="E-posta servisi henüz yapılandırılmamış. Lütfen destek ekibiyle iletişime geçin: privacy@autotax.cloud"
+            )
+        app_url = os.getenv("APP_URL", "https://autotax-mvp-production-e878.up.railway.app")
         reset_link = f"{app_url}/reset-password.html?token={token}"
-        send_password_reset(data.email, reset_link)
+        sent = send_password_reset(data.email, reset_link)
+        if not sent:
+            raise HTTPException(status_code=503, detail="E-posta gönderilemedi. Lütfen tekrar deneyin.")
     return {"message": "Şifre sıfırlama bağlantısı e-posta adresinize gönderildi (kayıtlıysa)."}
 
 
