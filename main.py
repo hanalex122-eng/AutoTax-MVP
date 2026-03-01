@@ -97,6 +97,7 @@ def health():
     return {"status": "ok", "version": "4.0.0"}
 
 
+@app.get("/api/setup-admin")
 @app.post("/api/setup-admin")
 def setup_admin():
     """Sadece hiç admin yoksa ilk admin hesabını oluşturur."""
