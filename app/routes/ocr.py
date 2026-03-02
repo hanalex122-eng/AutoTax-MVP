@@ -7,6 +7,7 @@ import os
 
 from app.services.image_processor import to_raw_png, prepare_for_ocr
 from app.services.ocr_engine import run_ocr
+from app.services.amount_parser import extract_total_amount
 from app.services.invoice_parser import parse_invoice
 from app.services.invoice_db import (
     add_invoice, update_invoice, get_review_queue, get_invoice,
@@ -100,11 +101,17 @@ async def _process(f: UploadFile, qr_allowed: bool = True,
     qr_raw    = await run_in_threadpool(read_qr, raw_png) if qr_allowed else None
     qr_parsed = _sanitize_qr_override(parse_qr(qr_raw)) if qr_raw else {}
 
-    # Enhancement → Super Resolution → OCR
-    ocr_ready = await run_in_threadpool(prepare_for_ocr, raw_png)
-    text      = await run_in_threadpool(run_ocr, ocr_ready)
+  # Enhancement → Super Resolution → OCR
+ocr_ready = await run_in_threadpool(prepare_for_ocr, raw_png)
+text      = await run_in_threadpool(run_ocr, ocr_ready)
 
-    parsed = parse_invoice(text)
+parsed = parse_invoice(text)
+
+# 🔥 Yeni güçlü total extractor (çok dilli + akıllı)
+better_total = extract_total_amount(text)
+
+if better_total is not None:
+    parsed["total"] = better_total
 
     # QR override (sanitize edilmiş)
     for key in ("total", "date", "time", "invoice_number", "vendor", "vat_amount", "vat_rate", "company"):

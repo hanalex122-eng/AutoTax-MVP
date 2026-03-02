@@ -8,6 +8,17 @@
 </head>
 <body>
 
+
+<script>
+(function(){
+  var tok = localStorage.getItem('at_token');
+  if(!tok) {
+    window.location.replace('/login.html');
+  }
+})();
+</script>
+
+
 <div class="app-wrapper">
 
   <!-- HEADER -->
