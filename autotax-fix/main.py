@@ -1,7 +1,7 @@
 import os
 import logging
 from fastapi import FastAPI, Request, Depends, HTTPException
-from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.responses import JSONResponse, RedirectResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
@@ -16,7 +16,6 @@ from app.routes.share  import router as share_router
 from app.routes.budget import router as budget_router
 from app.routes.tax    import router as tax_router
 
-# ── GDPR Uyumlu Loglama (PII içermez) ────────────────────
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
@@ -28,33 +27,11 @@ ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:8000").split(",
 
 app = FastAPI(
     title="AutoTax.cloud API",
-    description="Çok dilli fatura OCR, QR okuma, analiz ve SaaS abonelik platformu",
     version="4.0.0",
     docs_url="/api/docs",
     redoc_url="/api/redoc",
     openapi_url="/api/openapi.json",
 )
-
-# ── GDPR: 90 Günlük Otomatik Dosya Temizliği ─────────────
-# privacy.html taahhüdünü gerçekleştiren scheduler
-try:
-    from apscheduler.schedulers.background import BackgroundScheduler
-    _scheduler = BackgroundScheduler()
-
-    def _gdpr_purge_job():
-        try:
-            from app.services.invoice_db import purge_old_invoice_files
-            count = purge_old_invoice_files(days=90)
-            if count:
-                logger.info("GDPR purge_old_files removed=%d", count)
-        except Exception as e:
-            logger.error("GDPR purge job failed: %s", type(e).__name__)
-
-    _scheduler.add_job(_gdpr_purge_job, "cron", hour=3, minute=0)  # her gece 03:00
-    _scheduler.start()
-    logger.info("GDPR scheduler started (daily 03:00 purge)")
-except ImportError:
-    logger.warning("apscheduler not installed — GDPR 90-day purge disabled")
 
 app.add_middleware(
     CORSMiddleware,
@@ -64,19 +41,38 @@ app.add_middleware(
     allow_credentials=True,
 )
 
+# --- ADDED START ---
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["https://web-production-82c1c.up.railway.app"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+@app.middleware("http")
+async def log_request_origin(request: Request, call_next):
+    try:
+        print("REQUEST ORIGIN:", request.headers.get("origin"))
+    except:
+        pass
+    response = await call_next(request)
+    return response
+# --- ADDED END ---
+
 
 @app.exception_handler(RequestValidationError)
 async def validation_handler(request: Request, exc: RequestValidationError):
     return JSONResponse(
         status_code=422,
-        content={"status": "error", "message": "Geçersiz veri.",
-                 "errors": jsonable_encoder(exc.errors())},
+        content={"detail": "Geçersiz veri.", "errors": jsonable_encoder(exc.errors())},
     )
 
 
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
     return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
+
 
 @app.exception_handler(Exception)
 async def global_handler(request: Request, exc: Exception):
@@ -88,7 +84,6 @@ async def global_handler(request: Request, exc: Exception):
 
 @app.middleware("http")
 async def inject_user(request: Request, call_next):
-    """JWT varsa user'ı request.state'e ekle (plan kontrolü için)."""
     from app.routes.auth import decode_access
     auth = request.headers.get("Authorization", "")
     if not auth and "access_token" in request.cookies:
@@ -106,21 +101,13 @@ async def inject_user(request: Request, call_next):
     return await call_next(request)
 
 
-# Auth (public)
 app.include_router(auth_router,   prefix="/api")
 app.include_router(stripe_router, prefix="/api")
-
-# Korumalı route'lar — JWT zorunlu
 app.include_router(ocr_router,   prefix="/api", dependencies=[Depends(get_current_user)])
 app.include_router(stats_router, prefix="/api", dependencies=[Depends(get_current_user)])
-
-# Admin route — JWT + is_admin kontrolü
 app.include_router(admin_router, prefix="/api")
-# Muhasebeci paylaşım (token bazlı, JWT gerekmez)
 app.include_router(share_router,  prefix="/api")
-# Bütçe takibi
 app.include_router(budget_router, prefix="/api", dependencies=[Depends(get_current_user)])
-# Vergi / KDV raporu
 app.include_router(tax_router,    prefix="/api", dependencies=[Depends(get_current_user)])
 
 
@@ -129,28 +116,39 @@ def health():
     return {"status": "ok", "version": "4.0.0"}
 
 
-# ── GDPR: Hesap Silme Endpoint'i ─────────────────────────
-@app.delete("/api/user/delete-account", summary="GDPR hesap silme")
+@app.get("/api/setup-admin")
+@app.post("/api/setup-admin")
+def setup_admin():
+    """Sadece hiç admin yoksa ilk admin hesabını oluşturur."""
+    from app.services.user_db import _conn, _LOCK
+    import bcrypt, uuid
+    from datetime import datetime
+    with _conn() as c:
+        admin_count = c.execute("SELECT COUNT(*) FROM users WHERE is_admin=1").fetchone()[0]
+        if admin_count > 0:
+            raise HTTPException(status_code=403, detail="Admin zaten mevcut.")
+        user_id = str(uuid.uuid4())
+        pw_hash = bcrypt.hashpw("Autotax2026!".encode(), bcrypt.gensalt()).decode()
+        with _LOCK:
+            c.execute(
+                "INSERT INTO users (id,email,full_name,password_hash,plan,is_active,is_admin,created_at) VALUES (?,?,?,?,?,?,?,?)",
+                (user_id, "hanalex122@gmail.com", "Alex Han", pw_hash, "personal", 1, 1, datetime.utcnow().isoformat())
+            )
+    return {"ok": True, "email": "hanalex122@gmail.com", "password": "Autotax2026!"}
+
+
+@app.delete("/api/user/delete-account")
 async def delete_account(current_user: dict = Depends(get_current_user)):
-    """
-    Kullanıcının tüm verilerini (hesap + faturalar) kalıcı siler.
-    GDPR Madde 17 — Unutulma Hakkı.
-    """
-    from app.services.user_db     import delete_user
-    from app.services.invoice_db  import delete_user_invoices
+    from app.services.user_db    import delete_user
+    from app.services.invoice_db import delete_user_invoices
     user_id = current_user["id"]
     try:
         inv_count = delete_user_invoices(user_id)
         delete_user(user_id)
-        logger.info("GDPR account_deleted invoices=%d", inv_count)  # PII yok
         return {"status": "deleted", "invoices_removed": inv_count}
-    except Exception as e:
-        logger.error("GDPR delete_account failed: %s", type(e).__name__)
-        raise HTTPException(status_code=500, detail="Hesap silinemedi. Lütfen tekrar deneyin.")
+    except Exception:
+        raise HTTPException(status_code=500, detail="Hesap silinemedi.")
 
-
-# PWA dosyaları root'ta erişilebilir olmalı (service worker scope için)
-from fastapi.responses import FileResponse
 
 @app.get("/sw.js", include_in_schema=False)
 def sw():
@@ -161,10 +159,8 @@ def sw():
 def offline():
     return FileResponse("frontend/offline.html", media_type="text/html")
 
-# Statik dosyalar: icon'lar ve manifest → /static/
 if os.path.isdir("static"):
     app.mount("/static", StaticFiles(directory="static"), name="static_root")
 
-# Frontend uygulama dosyaları → /app/ prefix + SPA fallback
 if os.path.isdir("frontend"):
     app.mount("/", StaticFiles(directory="frontend", html=True), name="frontend")
