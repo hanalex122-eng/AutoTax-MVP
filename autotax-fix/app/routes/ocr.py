@@ -178,6 +178,65 @@ async def _process(f: UploadFile, qr_allowed: bool = True,
         print("SUMMARY ERROR:", str(e))
     # --- ADDED END ---
 
+    # --- ADDED START ---
+    try:
+        print("\n=== OCR ANALYSIS: INPUT ===")
+        print("Raw image bytes:", len(raw_png))
+    except Exception as e:
+        print("Input analysis error:", str(e))
+    try:
+        print("\n=== OCR ANALYSIS: PREPROCESS ===")
+        print("Processed image bytes:", len(ocr_ready))
+    except Exception as e:
+        print("Preprocess analysis error:", str(e))
+    try:
+        with open("debug_raw.png", "wb") as _f:
+            _f.write(raw_png)
+        with open("debug_processed.png", "wb") as _f:
+            _f.write(ocr_ready)
+        print("Saved debug images: debug_raw.png, debug_processed.png")
+    except Exception as e:
+        print("Image save error:", str(e))
+    try:
+        print("\n=== OCR ANALYSIS: PRIMARY OCR ===")
+        print("Text length:", len(text))
+        print("Text preview:", text[:200] if text else "EMPTY")
+    except Exception as e:
+        print("Primary OCR analysis error:", str(e))
+    alt_text = ""
+    try:
+        import pytesseract as _pt
+        from PIL import Image as _Image
+        import io as _io
+        _img = _Image.open(_io.BytesIO(ocr_ready))
+        alt_text = _pt.image_to_string(_img, config="--psm 6")
+        print("\n=== OCR ANALYSIS: FALLBACK OCR ===")
+        print("Alt text length:", len(alt_text))
+        print("Alt preview:", alt_text[:200] if alt_text else "EMPTY")
+    except Exception as e:
+        print("Fallback OCR error:", str(e))
+    print("\n=== OCR FINAL REPORT ===")
+    try:
+        if not text and not alt_text:
+            print("RESULT: TOTAL OCR FAILURE")
+            print("LIKELY CAUSES:")
+            print("- Image unreadable or corrupted")
+            print("- Preprocessing destroying text")
+            print("- Tesseract not configured correctly")
+        elif not text and alt_text:
+            print("RESULT: PRIMARY OCR FAILED, FALLBACK WORKS")
+            print("LIKELY CAUSE: OCR config or pipeline issue")
+        elif text:
+            print("RESULT: OCR WORKING")
+            if len(text.strip()) < 10:
+                print("WARNING: Very low text content")
+            else:
+                print("Text extraction looks OK")
+    except Exception as e:
+        print("Final report error:", str(e))
+    print("=== END OF OCR REPORT ===")
+    # --- ADDED END ---
+
     parsed = parse_invoice(text)
 
     # QR override (sanitize edilmiş)
