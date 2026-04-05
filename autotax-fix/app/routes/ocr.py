@@ -124,6 +124,60 @@ async def _process(f: UploadFile, qr_allowed: bool = True,
         pass
     # --- ADDED END ---
 
+    # --- ADDED START ---
+    try:
+        file_bytes = raw
+        print("=== OCR INPUT INFO ===")
+        print("Original file size:", len(file_bytes))
+    except Exception as e:
+        print("Error reading input info:", str(e))
+    try:
+        processed_bytes = ocr_ready
+        print("=== OCR PREPROCESS INFO ===")
+        print("Processed size:", len(processed_bytes))
+    except Exception as e:
+        print("Error reading preprocess info:", str(e))
+    print("=== OCR RAW RESPONSE START ===")
+    print(ocr_result)
+    print("=== OCR RAW RESPONSE END ===")
+    try:
+        print("IsErroredOnProcessing:", ocr_result.get("IsErroredOnProcessing"))
+        print("ErrorMessage:", ocr_result.get("ErrorMessage"))
+    except Exception as e:
+        print("Error reading error fields:", str(e))
+    try:
+        _parsed_dbg = ocr_result.get("ParsedResults")
+        print("ParsedResults:", _parsed_dbg)
+    except Exception as e:
+        print("Error reading ParsedResults:", str(e))
+    try:
+        _text_dbg = ocr_result["ParsedResults"][0]["ParsedText"]
+        print("=== OCR TEXT START ===")
+        print(_text_dbg)
+        print("=== OCR TEXT END ===")
+    except Exception as e:
+        print("TEXT EXTRACTION ERROR:", str(e))
+    print("=== OCR DEBUG SUMMARY ===")
+    try:
+        if not ocr_result:
+            print("FAIL: No response")
+        elif hasattr(ocr_result, "get") and ocr_result.get("IsErroredOnProcessing"):
+            print("FAIL: OCR API error")
+        elif hasattr(ocr_result, "get") and not ocr_result.get("ParsedResults"):
+            print("FAIL: No ParsedResults")
+        else:
+            try:
+                _summary_text = ocr_result["ParsedResults"][0].get("ParsedText", "")
+            except Exception:
+                _summary_text = ocr_result if isinstance(ocr_result, str) else ""
+            if not _summary_text.strip():
+                print("FAIL: Empty OCR text")
+            else:
+                print("SUCCESS: OCR returned text")
+    except Exception as e:
+        print("SUMMARY ERROR:", str(e))
+    # --- ADDED END ---
+
     parsed = parse_invoice(text)
 
     # QR override (sanitize edilmiş)
